@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1"
+    />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <title>SGSB - Sistema de Gestão e Segurança de Barragem</title>
+    <style>
+      /* ============================================
+         ESTILOS CRÍTICOS INLINE - CARREGAM ANTES DE QUALQUER CSS EXTERNO
+         Esses estilos garantem visibilidade mesmo se CSS externo falhar
+         ============================================ */
+      
+      /* Base - HTML e Body */
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background-color: #ffffff !important;
+        color: #1f2937 !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+      }
+      
+      /* Root Container */
+      #root {
+        min-height: 100vh !important;
+        background-color: #ffffff !important;
+        color: #1f2937 !important;
+      }
+      
+      /* Main Content Area */
+      main, [data-slot="sidebar-inset"] {
+        background-color: #ffffff !important;
+        color: #1f2937 !important;
+      }
+      
+      /* Cards - Todos os formatos */
+      [data-slot="card"],
+      .card,
+      [class*="Card"],
+      [class*="card"] {
+        background-color: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        color: #1f2937 !important;
+      }
+      
+      /* Classes Tailwind Críticas - Fallback direto */
+      .bg-card,
+      .bg-background,
+      [class*="bg-card"],
+      [class*="bg-background"] {
+        background-color: #ffffff !important;
+      }
+      
+      .text-foreground,
+      .text-card-foreground,
+      [class*="text-foreground"],
+      [class*="text-card-foreground"] {
+        color: #1f2937 !important;
+      }
+      
+      .border,
+      [class*="border"] {
+        border-color: #e5e7eb !important;
+      }
+      
+      /* Sidebar */
+      [data-sidebar],
+      [data-sidebar="sidebar"] {
+        background-color: #f9fafb !important;
+      }
+      
+      /* Garantir que elementos com classes Tailwind tenham estilos */
+      [class*="rounded"] {
+        border-radius: 0.5rem !important;
+      }
+      
+      [class*="shadow"] {
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+      }
+      
+      /* Prevenir transparência em qualquer elemento */
+      * {
+        background-color: inherit !important;
+      }
+      
+      /* Forçar background branco em containers principais */
+      body > *,
+      #root > * {
+        background-color: #ffffff !important;
+      }
+    </style>
+    <script>
+      /* ============================================
+         VERIFICAÇÃO DE CSS CRÍTICO - DETECTA E CORRIGE AUTOMATICAMENTE
+         ============================================ */
+      (function() {
+        'use strict';
+        
+        // Função para injetar CSS crítico se necessário
+        function injectCriticalCSS() {
+          const style = document.createElement('style');
+          style.id = 'critical-css-fallback';
+          style.textContent = `
+            /* CSS Crítico Injetado via JavaScript */
+            html, body, #root, main, [data-slot="sidebar-inset"] {
+              background-color: #ffffff !important;
+              color: #1f2937 !important;
+            }
+            [data-slot="card"], .card, [class*="Card"] {
+              background-color: #ffffff !important;
+              border: 1px solid #e5e7eb !important;
+              color: #1f2937 !important;
+            }
+          `;
+          document.head.appendChild(style);
+          console.warn('⚠️ CSS crítico injetado via JavaScript - CSS externo pode não ter carregado');
+        }
+        
+        // Verificar se CSS carregou após DOM estar pronto
+        function checkCSSLoaded() {
+          // Criar elemento de teste
+          const testEl = document.createElement('div');
+          testEl.className = 'bg-card';
+          testEl.style.position = 'absolute';
+          testEl.style.visibility = 'hidden';
+          testEl.style.top = '-9999px';
+          document.body.appendChild(testEl);
+          
+          // Verificar computed styles
+          const styles = window.getComputedStyle(testEl);
+          const bgColor = styles.backgroundColor;
+          
+          // Limpar elemento de teste
+          document.body.removeChild(testEl);
+          
+          // Se background é transparente, CSS não carregou corretamente
+          const isTransparent = bgColor === 'rgba(0, 0, 0, 0)' || 
+                                bgColor === 'transparent' ||
+                                bgColor === '';
+          
+          if (isTransparent) {
+            console.error('❌ CSS não carregou corretamente! Background detectado:', bgColor);
+            injectCriticalCSS();
+            return false;
+          }
+          
+          return true;
+        }
+        
+        // Verificar quando DOM estiver pronto
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(checkCSSLoaded, 500);
+          });
+        } else {
+          setTimeout(checkCSSLoaded, 500);
+        }
+        
+        // Verificar novamente após 2 segundos (caso CSS carregue lentamente)
+        setTimeout(function() {
+          if (!document.getElementById('critical-css-fallback')) {
+            checkCSSLoaded();
+          }
+        }, 2000);
+        
+        // Monitorar erros de carregamento de CSS
+        window.addEventListener('error', function(event) {
+          if (event.target instanceof HTMLLinkElement && event.target.rel === 'stylesheet') {
+            console.error('❌ Erro ao carregar CSS:', event.target.href);
+            if (!document.getElementById('critical-css-fallback')) {
+              injectCriticalCSS();
+            }
+          }
+        }, true);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

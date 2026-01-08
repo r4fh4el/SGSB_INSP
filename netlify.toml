@@ -1,0 +1,25 @@
+# ⚠️ ATENÇÃO: Esta configuração é APENAS para o FRONTEND
+# Você precisará hospedar o BACKEND em outra plataforma (Railway, Render, etc.)
+# e configurar a variável VITE_API_URL apontando para o backend
+
+[build]
+  command = "npm run build"
+  publish = "dist/public"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Redireciona chamadas de API para o backend externo
+# Substitua pela URL do seu backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://seu-backend.railway.app/api/:splat"
+  status = 200
+  force = true
+
+# SPA fallback - redireciona todas as rotas para index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+

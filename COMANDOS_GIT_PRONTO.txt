@@ -1,0 +1,40 @@
+# ============================================
+# COMANDOS GIT PRONTOS PARA USAR
+# ============================================
+
+# 1. Ver status atual
+git status
+
+# 2. Adicionar TODOS os arquivos (modificados e novos)
+git add .
+
+# 3. Ver o que será commitado
+git status
+
+# 4. Fazer commit com mensagem descritiva
+git commit -m "Corrigir telas transparentes: adicionar CSS inline expandido, verificação JavaScript automática e estratégias de prevenção"
+
+# 5. Enviar para o repositório remoto
+git push
+
+# ============================================
+# OU FAZER TUDO DE UMA VEZ (copiar e colar):
+# ============================================
+
+git add . && git commit -m "Corrigir telas transparentes: adicionar CSS inline expandido, verificação JavaScript automática e estratégias de prevenção" && git push
+
+# ============================================
+# SE DER ERRO DE CONFLITO:
+# ============================================
+
+# 1. Primeiro atualizar do remoto
+git pull
+
+# 2. Resolver conflitos se houver (editar arquivos manualmente)
+
+# 3. Depois adicionar, commitar e pushar
+git add .
+git commit -m "Corrigir telas transparentes: adicionar CSS inline expandido, verificação JavaScript automática e estratégias de prevenção"
+git push
+
+

@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @db.NVarChar(64)
+  name         String?  @db.NVarChar(255)
+  email        String?  @db.NVarChar(320)
+  loginMethod  String?  @db.NVarChar(64)
+  role         String   @default("visualizador") @db.NVarChar(32)
+  ativo        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  lastSignedIn DateTime @default(now())
+
+  @@map("users")
+}
+
+model Barragem {
+  id                      Int             @id @default(autoincrement())
+  codigo                  String          @unique @db.NVarChar(50)
+  nome                    String          @db.NVarChar(255)
+  rio                     String?         @db.NVarChar(255)
+  bacia                   String?         @db.NVarChar(255)
+  municipio               String?         @db.NVarChar(255)
+  estado                  String?         @db.NVarChar(2)
+  latitude                String?         @db.NVarChar(50)
+  longitude               String?         @db.NVarChar(50)
+  tipo                    String?         @db.NVarChar(100)
+  finalidade              String?         @db.NVarChar(255)
+  altura                  String?         @db.NVarChar(50)
+  comprimento             String?         @db.NVarChar(50)
+  volumeReservatorio      String?         @db.NVarChar(50)
+  areaReservatorio        String?         @db.NVarChar(50)
+  nivelMaximoNormal       String?         @db.NVarChar(50)
+  nivelMaximoMaximorum    String?         @db.NVarChar(50)
+  nivelMinimo             String?         @db.NVarChar(50)
+  proprietario            String?         @db.NVarChar(255)
+  operador                String?         @db.NVarChar(255)
+  anoInicioConstrucao     Int?
+  anoInicioOperacao       Int?
+  categoriaRisco          String?         @db.NVarChar(8)
+  danoPotencialAssociado  String?         @db.NVarChar(16)
+  status                  String          @default("ativa") @db.NVarChar(32)
+  observacoes             String?         @db.NVarChar(max)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @default(now()) @updatedAt
+
+  @@map("barragens")
+}

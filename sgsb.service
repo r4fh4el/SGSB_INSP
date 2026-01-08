@@ -1,0 +1,23 @@
+[Unit]
+Description=SGSB - Sistema de Gestão e Segurança de Barragem
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USER
+WorkingDirectory=/path/to/SGSB_INSP_SQL/SGSB
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+Environment="HOST=0.0.0.0"
+EnvironmentFile=/path/to/SGSB_INSP_SQL/SGSB/.env
+ExecStart=/usr/bin/node /path/to/SGSB_INSP_SQL/SGSB/dist/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sgsb
+
+[Install]
+WantedBy=multi-user.target
+
+
