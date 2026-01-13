@@ -647,23 +647,28 @@ export const appRouter = router({
         const id = await db.createCaracterizacaoBarragem(input as any);
         
         // Sincronizar automaticamente com SGSB-FINAL após criar
+        // Nota: A sincronização é opcional e não deve quebrar o fluxo principal
         try {
           const caracterizacao = await db.getCaracterizacaoById(id);
           if (caracterizacao) {
             const { sincronizarCaracterizacaoComHidro } = await import("./notificacaoHidro");
             const sincronizado = await sincronizarCaracterizacaoComHidro(caracterizacao);
             
-            // Atualizar flag de sincronização
+            // Atualizar flag de sincronização apenas se a sincronização foi bem-sucedida
             if (sincronizado) {
               await db.updateCaracterizacaoBarragem(id, {
                 sincronizadoComHidro: true,
                 dataSincronizacao: new Date(),
               } as any);
             }
+            // Se não sincronizou, não loga erro (a função sincronizarCaracterizacaoComHidro já trata internamente)
           }
-        } catch (error) {
-          // Log mas não quebra o fluxo
-          console.error("[Caracterização] Erro ao sincronizar com HIDRO:", error);
+        } catch (error: any) {
+          // Log apenas se for um erro inesperado (não relacionado à conexão)
+          // Erros de conexão já são tratados dentro de sincronizarCaracterizacaoComHidro
+          if (error.code !== 'ECONNREFUSED' && error.cause?.code !== 'ECONNREFUSED') {
+            console.error("[Caracterização] Erro inesperado ao sincronizar com HIDRO:", error.message || error);
+          }
         }
         
         return { id, success: true };
@@ -696,33 +701,47 @@ export const appRouter = router({
             metodoMedicao: z.string().optional(),
             equipamentoUtilizado: z.string().optional(),
             responsavelMedicao: z.string().optional(),
-            observacoes: z.string().optional(),
+            // Aceitar null e transformar em string vazia ou undefined
+            observacoes: z.string().nullable().optional().transform(val => val ?? ""),
             validado: z.boolean().optional(),
-            validadoPor: z.string().optional(),
+            validadoPor: z.string().nullable().optional().transform(val => val ?? ""),
           }).partial(),
         })
       )
       .mutation(async ({ input }) => {
-        await db.updateCaracterizacaoBarragem(input.id, input.data as any);
+        // Garantir que observacoes e validadoPor sejam strings vazias ao invés de null
+        const updateData: any = { ...input.data };
+        if (updateData.observacoes === null) {
+          updateData.observacoes = "";
+        }
+        if (updateData.validadoPor === null) {
+          updateData.validadoPor = "";
+        }
+        await db.updateCaracterizacaoBarragem(input.id, updateData);
         
         // Sincronizar automaticamente com SGSB-FINAL após atualizar
+        // Nota: A sincronização é opcional e não deve quebrar o fluxo principal
         try {
           const caracterizacao = await db.getCaracterizacaoById(input.id);
           if (caracterizacao) {
             const { sincronizarCaracterizacaoComHidro } = await import("./notificacaoHidro");
             const sincronizado = await sincronizarCaracterizacaoComHidro(caracterizacao);
             
-            // Atualizar flag de sincronização
+            // Atualizar flag de sincronização apenas se a sincronização foi bem-sucedida
             if (sincronizado) {
               await db.updateCaracterizacaoBarragem(input.id, {
                 sincronizadoComHidro: true,
                 dataSincronizacao: new Date(),
               } as any);
             }
+            // Se não sincronizou, não loga erro (a função sincronizarCaracterizacaoComHidro já trata internamente)
           }
-        } catch (error) {
-          // Log mas não quebra o fluxo
-          console.error("[Caracterização] Erro ao sincronizar com HIDRO:", error);
+        } catch (error: any) {
+          // Log apenas se for um erro inesperado (não relacionado à conexão)
+          // Erros de conexão já são tratados dentro de sincronizarCaracterizacaoComHidro
+          if (error.code !== 'ECONNREFUSED' && error.cause?.code !== 'ECONNREFUSED') {
+            console.error("[Caracterização] Erro inesperado ao sincronizar com HIDRO:", error.message || error);
+          }
         }
         
         return { success: true };

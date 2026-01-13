@@ -90,6 +90,8 @@ function formatSqlError(error: unknown) {
 
 const baseOptions: SqlConfig["options"] = {
   trustServerCertificate: true,
+  connectTimeout: 5000, // 5 segundos de timeout
+  requestTimeout: 10000, // 10 segundos para requests
 };
 
 let config: SqlConfig;
@@ -148,21 +150,51 @@ if (driver === "msnodesqlv8") {
 
 function createPool() {
   const pool = new sql.ConnectionPool(config);
-  const poolConnect = pool
-    .connect()
-    .then(() => {
-      console.log(`[SQL Server] Connected to ${rawServer}/${database}`);
-      return pool;
-    })
-    .catch((error: unknown) => {
-      console.error("[SQL Server] Failed to connect", formatSqlError(error));
-      console.error("[SQL Server] Raw error details:", error);
-      throw error;
-    });
-
+  
+  // Adicionar timeout para evitar espera infinita
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Connection timeout after 5 seconds to ${rawServer}/${database}`));
+    }, 5000);
+  });
+  
+  const poolConnect = Promise.race([
+    pool
+      .connect()
+      .then(() => {
+        console.log(`[SQL Server] Connected to ${rawServer}/${database}`);
+        return pool;
+      })
+      .catch((error: unknown) => {
+        console.error("[SQL Server] Failed to connect", formatSqlError(error));
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // Mensagens de erro mais amigáveis
+        if (errorMessage.includes("timeout") || errorMessage.includes("ETIMEDOUT")) {
+          console.error("[SQL Server] ⚠️  Timeout: Servidor não está respondendo ou porta está bloqueada");
+          console.error(`[SQL Server] 💡 Verifique se o servidor SQL está online em ${rawServer}`);
+          console.error(`[SQL Server] 💡 Verifique se a porta está aberta no firewall`);
+        } else if (errorMessage.includes("Login failed") || errorMessage.includes("authentication")) {
+          console.error("[SQL Server] ⚠️  Autenticação falhou: Verifique usuário e senha no .env");
+        } else if (errorMessage.includes("Cannot open database")) {
+          console.error(`[SQL Server] ⚠️  Banco de dados '${database}' não encontrado`);
+          console.error(`[SQL Server] 💡 Verifique se o banco existe ou crie o banco de dados`);
+        } else if (errorMessage.includes("ENOTFOUND") || errorMessage.includes("getaddrinfo")) {
+          console.error(`[SQL Server] ⚠️  Servidor não encontrado: ${rawServer}`);
+          console.error(`[SQL Server] 💡 Verifique se o IP/hostname está correto no .env`);
+        }
+        
+        console.error("[SQL Server] Raw error details:", error);
+        throw error;
+      }),
+    timeoutPromise
+  ]);
+  
   pool.on("error", (error: Error) => {
     console.error("[SQL Server] Connection pool error", error);
   });
+
+  return poolConnect;
 
   return poolConnect;
 }

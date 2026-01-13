@@ -132,6 +132,85 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Proxy para buscar cálculos do SGSB-WEB (evita problemas de CORS)
+  app.get("/api/sgsb-web/calculos-automaticos", async (req, res) => {
+    try {
+      const barragemId = req.query.barragemId;
+      if (!barragemId) {
+        return res.status(400).json({ error: "barragemId é obrigatório" });
+      }
+
+      const { hidroApiUrl } = await import("./env");
+      if (!hidroApiUrl) {
+        return res.status(500).json({ error: "HIDRO_API_URL não configurada" });
+      }
+
+      const url = `${hidroApiUrl}/API/BuscarCalculosAutomaticosPorBarragem?barragemId=${barragemId}`;
+      console.log(`[Proxy] Buscando cálculos de: ${url}`);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(30000), // 30 segundos de timeout
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Proxy] Erro HTTP ${response.status}: ${errorText}`);
+        return res.status(response.status).json({ 
+          error: `Erro ao buscar cálculos: ${response.status}`,
+          details: errorText.substring(0, 200)
+        });
+      }
+
+      const data = await response.json();
+      console.log(`[Proxy] Cálculos recebidos com sucesso para barragem ${barragemId}`);
+      res.json(data);
+    } catch (error: any) {
+      console.error("[Proxy] Erro ao buscar cálculos:", error);
+      const mensagemErro = error.name === "AbortError" 
+        ? "Timeout: O servidor SGSB-WEB demorou muito para responder"
+        : error.message || "Erro desconhecido ao buscar cálculos";
+      
+      res.status(500).json({ 
+        error: mensagemErro,
+        type: error.name || "UnknownError"
+      });
+    }
+  });
+
+  // Endpoint REST para integração com SGSB-WEB - Níveis de Risco
+  // IMPORTANTE: Deve estar ANTES do tRPC e do roteamento do frontend
+  app.get("/api/barragens/risco", async (_req, res) => {
+    try {
+      // Permitir CORS para o SGSB-WEB
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      
+      const barragens = await db.getAllBarragens();
+      const barragensComRisco = barragens.map(b => ({
+        id: b.id,
+        codigo: b.codigo,
+        nome: b.nome,
+        categoriaRisco: b.categoriaRisco || null,
+        danoPotencialAssociado: b.danoPotencialAssociado || null,
+        status: b.status || null,
+        municipio: b.municipio || null,
+        estado: b.estado || null,
+        rio: b.rio || null,
+        bacia: b.bacia || null
+      }));
+      res.json(barragensComRisco);
+    } catch (error: any) {
+      console.error("[API Risco] Erro ao buscar barragens:", error);
+      res.status(500).json({ error: "Erro ao buscar dados de risco" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -155,6 +234,20 @@ async function startServer() {
   if (port !== preferredPort) {
     console.log(`⚠️  Port ${preferredPort} is busy, using port ${port} instead`);
   }
+
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${port} is already in use!`);
+      console.error(`💡 Solutions:`);
+      console.error(`   1. Stop the process using port ${port}:`);
+      console.error(`      Get-Process | Where-Object {$_.ProcessName -eq "node"} | Stop-Process -Force`);
+      console.error(`   2. Or change PORT in .env file to another port (e.g., PORT=3001)`);
+      process.exit(1);
+    } else {
+      console.error('❌ Server error:', err);
+      process.exit(1);
+    }
+  });
 
   server.listen(port, host, () => {
     console.log(`🚀 Server running on http://${host}:${port}/`);

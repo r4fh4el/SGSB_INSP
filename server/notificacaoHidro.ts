@@ -121,12 +121,19 @@ export async function sincronizarCaracterizacaoComHidro(
     // Buscar lista de índices para verificar se já existe registro para esta barragem
     let registroExistente: any = null;
     try {
+      // Adicionar timeout para evitar que a requisição trave
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos
+      
       const listResponse = await fetch(`${hidroUrl}/API/ListarIndiceCaracterizacaoBH`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
       
       if (listResponse.ok) {
         const lista = await listResponse.json();
@@ -134,9 +141,16 @@ export async function sincronizarCaracterizacaoComHidro(
           ? lista.find((item: any) => item.Barragem_ID === caracterizacao.barragemId)
           : null;
       }
-    } catch (error) {
+    } catch (error: any) {
       // Se não conseguir buscar lista, continua tentando criar/atualizar
-      console.log("[Sincronização HIDRO] Não foi possível verificar registros existentes, tentando criar novo");
+      if (error.name === 'AbortError') {
+        console.log("[Sincronização HIDRO] Timeout ao verificar registros existentes, tentando criar novo");
+      } else if (error.code === 'ECONNREFUSED' || error.cause?.code === 'ECONNREFUSED') {
+        console.log("[Sincronização HIDRO] Serviço HIDRO não disponível (ECONNREFUSED), pulando sincronização");
+        return false;
+      } else {
+        console.log("[Sincronização HIDRO] Não foi possível verificar registros existentes, tentando criar novo");
+      }
     }
 
     // Preparar dados no formato esperado pelo SGSB-FINAL
@@ -173,13 +187,20 @@ export async function sincronizarCaracterizacaoComHidro(
     
     const method = registroExistente?.Id ? "PUT" : "POST";
 
+    // Adicionar timeout para evitar que a requisição trave
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos
+
     const response = await fetch(`${hidroUrl}${endpoint}`, {
       method: method,
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(dadosHidro),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -204,9 +225,16 @@ export async function sincronizarCaracterizacaoComHidro(
     }
     
     return true;
-  } catch (error) {
+  } catch (error: any) {
     // Loga o erro mas não quebra o fluxo principal
-    console.error("[Sincronização HIDRO] Erro ao sincronizar caracterização:", error);
+    // Tratamento específico para erros de conexão
+    if (error.name === 'AbortError') {
+      console.log("[Sincronização HIDRO] Timeout ao sincronizar caracterização (serviço HIDRO não respondeu a tempo)");
+    } else if (error.code === 'ECONNREFUSED' || error.cause?.code === 'ECONNREFUSED') {
+      console.log("[Sincronização HIDRO] Serviço HIDRO não disponível (ECONNREFUSED), sincronização ignorada");
+    } else {
+      console.error("[Sincronização HIDRO] Erro ao sincronizar caracterização:", error.message || error);
+    }
     return false;
   }
 }

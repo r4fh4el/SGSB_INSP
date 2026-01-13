@@ -155,10 +155,24 @@ export default function CalculoAutomatico() {
     });
 
     try {
-      const url = `${SGSB_FINAL_API_URL}/API/BuscarCalculosAutomaticosPorBarragem?barragemId=${selectedBarragem}`;
-      console.log("[CalculoAutomatico] Tentando buscar de:", url);
+      // Usar proxy do backend para evitar problemas de CORS
+      const url = `/api/sgsb-web/calculos-automaticos?barragemId=${selectedBarragem}`;
+      console.log("[CalculoAutomatico] Tentando buscar via proxy:", url);
       
-      const response = await fetch(url);
+      // Adicionar timeout e headers
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -198,13 +212,25 @@ export default function CalculoAutomatico() {
       }
     } catch (error: any) {
       console.warn("Erro ao buscar cálculos:", error);
-      const mensagemErro = error.message || 'Erro de conexão';
+      
+      let mensagemErro = 'Erro de conexão';
+      
+      if (error.name === 'AbortError') {
+        mensagemErro = 'Timeout: O servidor demorou muito para responder. Verifique se o SGSB-WEB está funcionando.';
+      } else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        mensagemErro = 'Erro de rede: Não foi possível conectar ao SGSB-WEB. Verifique se o servidor está online e acessível.';
+      } else if (error.message?.includes('CORS')) {
+        mensagemErro = 'Erro de CORS: O servidor SGSB-WEB não está permitindo requisições deste domínio.';
+      } else {
+        mensagemErro = error.message || 'Erro desconhecido ao buscar cálculos';
+      }
+      
       setErroConexao(mensagemErro);
       setStatusConexao({
         url: SGSB_FINAL_API_URL,
         status: 'erro',
         ultimaVerificacao: new Date(),
-        mensagem: mensagemErro
+        mensagem: `Erro via proxy: ${mensagemErro}`
       });
     } finally {
       setLoadingCalculos(false);

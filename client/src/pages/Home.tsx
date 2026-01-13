@@ -33,16 +33,22 @@ export default function Home() {
   } = trpc.barragens.list.useQuery(undefined, {
     retry: 2,
     refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error("[Home] Erro ao carregar barragens:", error);
+    },
   });
 
+  // Garantir que barragens seja sempre um array
+  const barragensArray = Array.isArray(barragens) ? barragens : [];
+
   // Calcular estatísticas gerais
-  const estatisticasGerais = barragens && Array.isArray(barragens) && barragens.length > 0
+  const estatisticasGerais = barragensArray.length > 0
     ? {
-        total: barragens.length,
-        comRiscoAlto: barragens.filter((b: any) => b.categoriaRisco === "A" || b.categoriaRisco === "B").length,
-        comRiscoMedio: barragens.filter((b: any) => b.categoriaRisco === "C").length,
-        comRiscoBaixo: barragens.filter((b: any) => b.categoriaRisco === "D" || b.categoriaRisco === "E").length,
-        comDanoAlto: barragens.filter((b: any) => b.danoPotencialAssociado === "Alto").length,
+        total: barragensArray.length,
+        comRiscoAlto: barragensArray.filter((b: any) => b?.categoriaRisco === "A" || b?.categoriaRisco === "B").length,
+        comRiscoMedio: barragensArray.filter((b: any) => b?.categoriaRisco === "C").length,
+        comRiscoBaixo: barragensArray.filter((b: any) => b?.categoriaRisco === "D" || b?.categoriaRisco === "E").length,
+        comDanoAlto: barragensArray.filter((b: any) => b?.danoPotencialAssociado === "Alto").length,
       }
     : null;
 
@@ -93,10 +99,10 @@ export default function Home() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6" style={{ backgroundColor: '#ffffff' }}>
+      <div className="space-y-6" style={{ backgroundColor: '#ffffff', minHeight: '100vh' }}>
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Bem-vindo, {user?.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Bem-vindo, {user?.name || 'Usuário'}</h1>
           <p className="text-muted-foreground mt-1">
             Sistema de Gestão e Segurança de Barragem - Visão Geral
           </p>
@@ -120,7 +126,7 @@ export default function Home() {
               </Button>
             </CardContent>
           </Card>
-        ) : barragens && Array.isArray(barragens) && barragens.length > 0 && estatisticasGerais ? (
+        ) : barragensArray.length > 0 && estatisticasGerais ? (
           <>
             {/* Estatísticas Gerais */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4" style={{ gap: '1.5rem', display: 'grid' }}>
@@ -264,7 +270,7 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {barragens.map((barragem: any) => (
+                  {barragensArray.map((barragem: any) => (
                     <Card key={barragem.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between">

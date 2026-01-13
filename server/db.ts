@@ -2009,7 +2009,6 @@ export async function atualizarCaracterizacaoPorLeitura(
 
 export async function updateCaracterizacaoBarragem(id: number, data: Partial<InsertCaracterizacaoBarragem>) {
   const fields: string[] = [];
-  const values: any = { id };
 
   // Mapeamento de campos para garantir nomes corretos no banco
   // IMPORTANTE: alturaMaciçoPrincipal pode ter problemas de encoding, usar alturaMacicoPrincipal
@@ -2037,11 +2036,24 @@ export async function updateCaracterizacaoBarragem(id: number, data: Partial<Ins
     areaReservatorio: "areaReservatorio",
   };
 
+  // Lista de campos decimais (mesma lógica do INSERT)
+  const decimalFields = new Set([
+    "areaBaciaHidrografica", "perimetro", "comprimentoRioPrincipal",
+    "comprimentoVetorialRioPrincipal", "comprimentoTotalRioBacia",
+    "altitudeMinimaBacia", "altitudeMaximaBacia",
+    "altitudeAltimetricaBaciaM", "altitudeAltimetricaBaciaKM",
+    "comprimentoAxialBacia", "comprimentoRioPrincipal_L",
+    "declividadeBacia_S", "areaDrenagem_A",
+    "larguraBarragem", "alturaMacicoPrincipal",
+    "volumeReservatorio", "cargaHidraulicaMaxima",
+    "profundidadeMediaReservatorio", "areaReservatorio"
+  ]);
+
+  // Construir lista de campos e valores
   Object.entries(data).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined) {
       const dbField = fieldMapping[key] || key;
       fields.push(`${dbField} = @${dbField}`);
-      values[dbField] = value;
     }
   });
 
@@ -2055,44 +2067,44 @@ export async function updateCaracterizacaoBarragem(id: number, data: Partial<Ins
       `UPDATE dbo.caracterizacaoBarragem SET ${fields.join(", ")}, updatedAt = SYSDATETIME() WHERE id = @id`,
       (request) => {
         request.input("id", sqlServer.Int, id);
-        Object.entries(values).forEach(([key, value]) => {
-          if (key !== "id") {
-            // Verificar se é um campo numérico decimal
-            const isDecimalField = fieldMapping[key] !== undefined || 
-              key.includes("Bacia") || 
-              key.includes("Rio") || 
-              key.includes("Reservatorio") || 
-              key.includes("Barragem") || 
-              key.includes("Drenagem") || 
-              key.includes("Declividade") || 
-              key.includes("Carga") || 
-              key.includes("Profundidade") || 
-              key.includes("Area") || 
-              key.includes("Perimetro") || 
-              key.includes("Volume") || 
-              key.includes("Largura") || 
-              key.includes("Altura") || 
-              key.includes("Comprimento");
-
-            if (typeof value === "number" && isDecimalField) {
-              request.input(key, sqlServer.Decimal(15, 4), value);
-            } else if (typeof value === "string") {
-              // Campos de texto têm tamanhos específicos
-              if (key === "metodoMedicao") {
-                request.input(key, sqlServer.NVarChar(100), value);
-              } else if (key === "equipamentoUtilizado" || key === "responsavelMedicao") {
-                request.input(key, sqlServer.NVarChar(255), value);
-              } else if (key === "validadoPor") {
-                request.input(key, sqlServer.NVarChar(64), value);
-              } else {
-                request.input(key, sqlServer.NVarChar(sqlServer.MAX), value);
-              }
-            } else if (typeof value === "boolean") {
-              request.input(key, sqlServer.Bit, value);
-            } else if (value instanceof Date) {
-              request.input(key, sqlServer.DateTime2, value);
+        
+        // Declarar todos os parâmetros explicitamente, seguindo o padrão do INSERT
+        Object.entries(data).forEach(([key, value]) => {
+          if (value !== undefined) {
+            const dbField = fieldMapping[key] || key;
+            
+            // Campos decimais
+            if (decimalFields.has(dbField)) {
+              request.input(dbField, sqlServer.Decimal(15, 4), value ?? null);
+            }
+            // Campos de texto
+            else if (dbField === "metodoMedicao") {
+              const stringValue = value === null ? "" : (value ?? "");
+              request.input(dbField, sqlServer.NVarChar(100), stringValue);
+            } else if (dbField === "equipamentoUtilizado" || dbField === "responsavelMedicao") {
+              const stringValue = value === null ? "" : (value ?? "");
+              request.input(dbField, sqlServer.NVarChar(255), stringValue);
+            } else if (dbField === "validadoPor") {
+              const stringValue = value === null ? "" : (value ?? "");
+              request.input(dbField, sqlServer.NVarChar(64), stringValue);
+            } else if (dbField === "observacoes") {
+              const stringValue = value === null ? "" : (value ?? "");
+              request.input(dbField, sqlServer.NVarChar(sqlServer.MAX), stringValue);
+            }
+            // Campos booleanos
+            else if (dbField === "validado") {
+              request.input(dbField, sqlServer.Bit, value ?? null);
+            }
+            // Campos de data
+            else if (dbField === "dataSincronizacao" && value instanceof Date) {
+              request.input(dbField, sqlServer.DateTime2, value);
+            }
+            // Outros campos de string (fallback)
+            else if (typeof value === "string" || value === null) {
+              const stringValue = value === null ? "" : value;
+              request.input(dbField, sqlServer.NVarChar(sqlServer.MAX), stringValue);
             } else {
-              console.warn(`[updateCaracterizacaoBarragem] Tipo não mapeado para campo ${key}:`, typeof value);
+              console.warn(`[updateCaracterizacaoBarragem] Tipo não mapeado para campo ${dbField}:`, typeof value);
             }
           }
         });
@@ -2102,7 +2114,7 @@ export async function updateCaracterizacaoBarragem(id: number, data: Partial<Ins
   } catch (error: any) {
     console.error(`[updateCaracterizacaoBarragem] Erro ao atualizar caracterização ID ${id}:`, error);
     console.error(`[updateCaracterizacaoBarragem] Query: UPDATE dbo.caracterizacaoBarragem SET ${fields.join(", ")}, updatedAt = SYSDATETIME() WHERE id = @id`);
-    console.error(`[updateCaracterizacaoBarragem] Valores:`, values);
+    console.error(`[updateCaracterizacaoBarragem] Dados recebidos:`, data);
     throw error;
   }
 }
