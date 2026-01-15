@@ -607,7 +607,7 @@ export const appRouter = router({
         return await db.getCaracterizacaoByChecklist(input.checklistId);
       }),
 
-    getCaracterizacaoByBarragem: protectedProcedure
+    getCaracterizacaoByBarragem: publicProcedure
       .input(z.object({ barragemId: z.number() }))
       .query(async ({ input }) => {
         return await db.getCaracterizacaoByBarragem(input.barragemId);

@@ -141,13 +141,37 @@ async function startServer() {
       }
 
       const { hidroApiUrl } = await import("./env");
-      if (!hidroApiUrl) {
-        return res.status(500).json({ error: "HIDRO_API_URL não configurada" });
+      
+      // Debug detalhado
+      console.log("[Proxy] === DEBUG HIDRO_API_URL ===");
+      console.log("[Proxy] process.env.HIDRO_API_URL (raw):", process.env.HIDRO_API_URL);
+      console.log("[Proxy] hidroApiUrl (from env.ts):", hidroApiUrl);
+      console.log("[Proxy] hidroApiUrl.trim():", hidroApiUrl?.trim());
+      console.log("[Proxy] isEmpty:", !hidroApiUrl || hidroApiUrl.trim() === "");
+      
+      if (!hidroApiUrl || hidroApiUrl.trim() === "") {
+        console.error("[Proxy] ❌ HIDRO_API_URL não configurada ou vazia");
+        console.error("[Proxy] process.env.HIDRO_API_URL:", process.env.HIDRO_API_URL);
+        console.error("[Proxy] Verifique se a variável está no arquivo .env e se o servidor foi reiniciado");
+        return res.status(500).json({ 
+          error: "HIDRO_API_URL não configurada",
+          debug: process.env.NODE_ENV === "development" ? {
+            raw: process.env.HIDRO_API_URL,
+            processed: hidroApiUrl
+          } : undefined
+        });
       }
+      
+      console.log("[Proxy] ✓ HIDRO_API_URL configurada:", hidroApiUrl);
 
-      const url = `${hidroApiUrl}/API/BuscarCalculosAutomaticosPorBarragem?barragemId=${barragemId}`;
+      // URL já está normalizada no env.ts, mas garantir
+      let normalizedUrl = hidroApiUrl.trim().replace(/\/$/, "");
+
+      const url = `${normalizedUrl}/API/BuscarCalculosAutomaticosPorBarragem?barragemId=${barragemId}`;
       console.log(`[Proxy] Buscando cálculos de: ${url}`);
+      console.log(`[Proxy] HIDRO_API_URL original: ${hidroApiUrl}`);
 
+      const startTime = Date.now();
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -157,27 +181,49 @@ async function startServer() {
         signal: AbortSignal.timeout(30000), // 30 segundos de timeout
       });
 
+      const duration = Date.now() - startTime;
+      console.log(`[Proxy] Resposta recebida em ${duration}ms - Status: ${response.status}`);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`[Proxy] Erro HTTP ${response.status}: ${errorText}`);
+        console.error(`[Proxy] URL tentada: ${url}`);
         return res.status(response.status).json({ 
           error: `Erro ao buscar cálculos: ${response.status}`,
-          details: errorText.substring(0, 200)
+          details: errorText.substring(0, 200),
+          url: url
         });
       }
 
       const data = await response.json();
-      console.log(`[Proxy] Cálculos recebidos com sucesso para barragem ${barragemId}`);
+      console.log(`[Proxy] ✓ Cálculos recebidos com sucesso para barragem ${barragemId} (${duration}ms)`);
       res.json(data);
     } catch (error: any) {
-      console.error("[Proxy] Erro ao buscar cálculos:", error);
-      const mensagemErro = error.name === "AbortError" 
-        ? "Timeout: O servidor SGSB-WEB demorou muito para responder"
-        : error.message || "Erro desconhecido ao buscar cálculos";
+      console.error("[Proxy] ❌ Erro ao buscar cálculos:", error);
+      console.error("[Proxy] Tipo do erro:", error.name);
+      console.error("[Proxy] Mensagem:", error.message);
+      console.error("[Proxy] Stack:", error.stack);
+      
+      let mensagemErro = "Erro desconhecido ao buscar cálculos";
+      let tipoErro = error.name || "UnknownError";
+      
+      if (error.name === "AbortError") {
+        mensagemErro = "Timeout: O servidor SGSB-WEB demorou muito para responder (30s)";
+      } else if (error.code === "ECONNREFUSED") {
+        mensagemErro = "Conexão recusada: A API não está acessível no endereço configurado";
+      } else if (error.code === "ENOTFOUND") {
+        mensagemErro = "Host não encontrado: Verifique se a URL da API está correta";
+      } else if (error.code === "ETIMEDOUT") {
+        mensagemErro = "Timeout de conexão: A API não respondeu a tempo";
+      } else if (error.message) {
+        mensagemErro = error.message;
+      }
       
       res.status(500).json({ 
         error: mensagemErro,
-        type: error.name || "UnknownError"
+        type: tipoErro,
+        code: error.code || null,
+        details: process.env.NODE_ENV === "development" ? error.stack : undefined
       });
     }
   });
