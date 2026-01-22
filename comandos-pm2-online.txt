@@ -1,0 +1,166 @@
+# ========================================
+# COMANDOS PM2 PARA DEIXAR SGSB_INSP ONLINE
+# ========================================
+
+# ========================================
+# 1. INSTALAÇÃO DO PM2
+# ========================================
+
+# Instalar PM2 globalmente
+npm install -g pm2
+
+# OU com pnpm
+pnpm add -g pm2
+
+# ========================================
+# 2. COMANDOS BÁSICOS PARA INICIAR
+# ========================================
+
+# Opção A: Usando pnpm dev (desenvolvimento)
+cd ~/SGSB_INSP
+pm2 start "pnpm dev" --name "sgsb-insp"
+
+# Opção B: Usando npm start (produção)
+cd ~/SGSB_INSP
+pm2 start npm --name "sgsb-insp" -- start
+
+# Opção C: Usando o script direto (se tiver build)
+cd ~/SGSB_INSP
+pm2 start server/dist/index.js --name "sgsb-insp" --node-args="--env-file=.env"
+
+# Opção D: Usando ecosystem.config.js (se existir)
+cd ~/SGSB_INSP
+pm2 start ecosystem.config.js
+
+# ========================================
+# 3. COMANDO COMPLETO RECOMENDADO
+# ========================================
+
+cd ~/SGSB_INSP && pm2 start "pnpm dev" --name "sgsb-insp" --interpreter bash
+
+# OU com variáveis de ambiente
+cd ~/SGSB_INSP && pm2 start "pnpm dev" --name "sgsb-insp" --interpreter bash --env production
+
+# ========================================
+# 4. CONFIGURAR PARA INICIAR AUTOMATICAMENTE
+# ========================================
+
+# Gerar script de inicialização automática
+pm2 startup
+
+# IMPORTANTE: Copie e execute o comando que aparecer (algo como):
+# sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u seu-usuario --hp /home/seu-usuario
+
+# Salvar configuração atual
+pm2 save
+
+# ========================================
+# 5. COMANDOS DE GERENCIAMENTO
+# ========================================
+
+# Ver status
+pm2 status
+
+# Ver logs em tempo real
+pm2 logs sgsb-insp
+
+# Ver últimas 100 linhas
+pm2 logs sgsb-insp --lines 100
+
+# Ver apenas erros
+pm2 logs sgsb-insp --err
+
+# Reiniciar
+pm2 restart sgsb-insp
+
+# Parar
+pm2 stop sgsb-insp
+
+# Iniciar (se estiver parado)
+pm2 start sgsb-insp
+
+# Recarregar sem downtime
+pm2 reload sgsb-insp
+
+# Remover do PM2
+pm2 delete sgsb-insp
+
+# Monitorar (CPU, memória)
+pm2 monit
+
+# Ver informações detalhadas
+pm2 show sgsb-insp
+
+# ========================================
+# 6. COMANDO ÚNICO COMPLETO (SSH)
+# ========================================
+
+# Execute este comando via SSH para iniciar tudo:
+ssh USER@HOST "cd ~/SGSB_INSP && pm2 start 'pnpm dev' --name 'sgsb-insp' --interpreter bash && pm2 startup && pm2 save && pm2 status"
+
+# ========================================
+# 7. VERIFICAR SE ESTÁ RODANDO
+# ========================================
+
+# Ver status
+pm2 status
+
+# Ver logs
+pm2 logs sgsb-insp --lines 50
+
+# Verificar porta
+netstat -tulpn | grep :3000
+# OU
+lsof -i :3000
+
+# Testar no navegador
+# http://SEU_IP:3000
+# http://SEU_IP:5173 (se for dev)
+
+# ========================================
+# 8. ATUALIZAR E REINICIAR
+# ========================================
+
+# Após fazer pull do Git:
+cd ~/SGSB_INSP
+git pull origin main
+pnpm install
+pm2 restart sgsb-insp
+pm2 logs sgsb-insp --lines 50
+
+# ========================================
+# 9. TROUBLESHOOTING
+# ========================================
+
+# Se não iniciar automaticamente após reiniciar servidor:
+pm2 startup
+pm2 save
+
+# Se processo morrer constantemente:
+pm2 logs sgsb-insp --err
+pm2 monit
+
+# Limpar logs antigos:
+pm2 flush
+
+# Reiniciar todos os processos:
+pm2 restart all
+
+# Parar todos:
+pm2 stop all
+
+# ========================================
+# 10. EXEMPLO COMPLETO (COPIE E COLE)
+# ========================================
+
+# Conectar via SSH e executar:
+ssh USER@HOST << 'EOF'
+cd ~/SGSB_INSP
+pm2 delete sgsb-insp 2>/dev/null || true
+pm2 start "pnpm dev" --name "sgsb-insp" --interpreter bash
+pm2 startup
+pm2 save
+pm2 status
+pm2 logs sgsb-insp --lines 20
+EOF
+

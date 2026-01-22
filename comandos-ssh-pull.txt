@@ -1,0 +1,119 @@
+# ========================================
+# COMANDOS SSH PARA PULL NO SERVIDOR
+# ========================================
+
+# 1. CONECTAR AO SERVIDOR VIA SSH
+# Substitua USER@HOST pelo seu usuário e host
+ssh USER@HOST
+
+# OU em um único comando (executa e desconecta):
+ssh USER@HOST "cd /caminho/para/SGSB_INSP && git pull origin main"
+
+# ========================================
+# 2. SEQUÊNCIA COMPLETA DE COMANDOS
+# ========================================
+
+# Conectar e executar comandos:
+ssh USER@HOST << 'EOF'
+# Navegar até o diretório
+cd ~/SGSB_INSP
+# ou
+cd /caminho/para/SGSB_INSP
+
+# Fazer backup do .env
+if [ -f .env ]; then
+    cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+    echo "✓ Backup do .env criado"
+fi
+
+# Verificar status
+git fetch origin
+git status
+
+# Fazer pull
+git pull origin main
+
+# Instalar dependências (se necessário)
+pnpm install
+
+# Reiniciar servidor (se usar PM2)
+pm2 restart all
+# ou
+pm2 restart sgsb-insp
+
+# Verificar status
+pm2 status
+EOF
+
+# ========================================
+# 3. COMANDOS INDIVIDUAIS (executar um por vez)
+# ========================================
+
+# Conectar ao servidor
+ssh USER@HOST
+
+# Depois de conectar, execute:
+cd ~/SGSB_INSP
+
+# Backup do .env
+cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+
+# Verificar alterações
+git fetch origin
+git status
+
+# Fazer pull
+git pull origin main
+
+# Se houver conflitos, fazer stash primeiro:
+git stash
+git pull origin main
+git stash pop
+
+# Instalar dependências (se package.json mudou)
+pnpm install
+
+# Rebuild (se necessário)
+pnpm build
+
+# Reiniciar servidor
+pm2 restart all
+
+# Ver logs
+pm2 logs sgsb-insp --lines 50
+
+# ========================================
+# 4. SCRIPT AUTOMÁTICO (copie e cole tudo)
+# ========================================
+
+ssh USER@HOST "cd ~/SGSB_INSP && \
+    cp .env .env.backup.\$(date +%Y%m%d_%H%M%S) 2>/dev/null; \
+    git fetch origin && \
+    git pull origin main && \
+    pnpm install && \
+    pm2 restart all && \
+    echo '✓ Atualização concluída!'"
+
+# ========================================
+# 5. COM SCRIPT EXISTENTE (pull-no-servidor.sh)
+# ========================================
+
+# Copiar script para o servidor (se ainda não estiver lá)
+scp pull-no-servidor.sh USER@HOST:~/SGSB_INSP/
+
+# Conectar e executar
+ssh USER@HOST "cd ~/SGSB_INSP && chmod +x pull-no-servidor.sh && ./pull-no-servidor.sh"
+
+# ========================================
+# 6. EXECUTAR SCRIPT SQL DO QUESTIONÁRIO
+# ========================================
+
+ssh USER@HOST "cd ~/SGSB_INSP && \
+    chmod +x executar-script-questionario.ps1 && \
+    powershell -ExecutionPolicy Bypass -File ./executar-script-questionario.ps1"
+
+# OU se for Linux:
+ssh USER@HOST "cd ~/SGSB_INSP && \
+    # Executar SQL diretamente (ajuste credenciais)
+    sqlcmd -S SERVIDOR_SQL -U USUARIO -P SENHA -d sgsb_insp -i criar-tabela-questionario.sql"
+
