@@ -123,3 +123,5 @@ Write-Host "   5. Verifique os logs do servidor Node.js" -ForegroundColor White
 Write-Host "   6. Teste a conexao com SQL Server Management Studio" -ForegroundColor White
 Write-Host ""
 
+
+

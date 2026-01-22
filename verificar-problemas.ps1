@@ -100,3 +100,5 @@ Write-Host "3. Vá na aba Network e verifique se arquivos estao carregando" -For
 Write-Host "4. Limpe o cache do navegador (Ctrl+Shift+Delete)" -ForegroundColor Gray
 Write-Host ""
 
+
+

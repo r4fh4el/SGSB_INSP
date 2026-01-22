@@ -111,3 +111,5 @@ Se após seguir todos os passos acima você ainda não conseguir acessar:
    ```
 4. **Verifique os logs do servidor** no terminal onde você rodou `pnpm start`
 
+
+

@@ -137,3 +137,5 @@ Write-Host "  1. Pare o servidor atual (Ctrl+C)" -ForegroundColor Gray
 Write-Host "  2. Execute novamente: npm run dev (ou o comando que você usa)" -ForegroundColor Gray
 Write-Host ""
 
+
+

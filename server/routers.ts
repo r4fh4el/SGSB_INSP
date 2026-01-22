@@ -1159,6 +1159,177 @@ export const appRouter = router({
   }),
 
   // ============================================================================
+  // QUESTIONÁRIO DE INSPEÇÃO REGULAR DE BARRAGEM DE TERRA
+  // ============================================================================
+
+  questionarios: router({
+    list: protectedProcedure
+      .input(z.object({ barragemId: z.number().optional(), limit: z.number().optional() }))
+      .query(async ({ input }) => {
+        if (input.barragemId) {
+          return await db.getQuestionariosByBarragem(input.barragemId, input.limit);
+        }
+        return [];
+      }),
+
+    listByBarragem: protectedProcedure
+      .input(z.object({ barragemId: z.number(), limit: z.number().optional() }))
+      .query(async ({ input }) => {
+        return await db.getQuestionariosByBarragem(input.barragemId, input.limit);
+      }),
+
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      const questionario = await db.getQuestionarioById(input.id);
+      const itens = await db.getQuestionarioItensByQuestionario(input.id);
+      const comentariosSecoes = await db.getQuestionarioComentariosSecoes(input.id);
+      return { questionario, itens, comentariosSecoes };
+    }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          barragemId: z.number(),
+          nomeBarragem: z.string().optional(),
+          coordenadaLatGrau: z.string().optional(),
+          coordenadaLatMinuto: z.string().optional(),
+          coordenadaLatSegundo: z.string().optional(),
+          coordenadaLonGrau: z.string().optional(),
+          coordenadaLonMinuto: z.string().optional(),
+          coordenadaLonSegundo: z.string().optional(),
+          datum: z.string().optional(),
+          municipioEstado: z.string().optional(),
+          vistoriadoPor: z.string().optional(),
+          assinatura: z.string().optional(),
+          cargo: z.string().optional(),
+          dataVistoria: z.string().optional(),
+          vistoriaNumero: z.string().optional(),
+          cotaAtualNivelAgua: z.string().optional(),
+          bacia: z.string().optional(),
+          cursoDAguaBarrado: z.string().optional(),
+          empreendedor: z.string().optional(),
+          nivelPerigoGlobal: z.number().optional(),
+          outrosProblemas: z.string().optional(),
+          sugestoesRecomendacoes: z.string().optional(),
+          itens: z.array(
+            z.object({
+              secao: z.string(),
+              numero: z.number(),
+              descricao: z.string(),
+              situacao: z.enum(["NA", "NE", "PV", "DS", "DI", "PC", "AU", "NI"]).optional(),
+              magnitude: z.enum(["I", "P", "M", "G"]).optional(),
+              nivelPerigo: z.number().optional(),
+              comentario: z.string().optional(),
+            })
+          ).optional(),
+          comentariosSecoes: z.record(z.string(), z.string()).optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const questionarioData: any = {
+          barragemId: input.barragemId,
+          usuarioId: ctx.user.id,
+          nomeBarragem: input.nomeBarragem || undefined,
+          coordenadaLatGrau: input.coordenadaLatGrau || undefined,
+          coordenadaLatMinuto: input.coordenadaLatMinuto || undefined,
+          coordenadaLatSegundo: input.coordenadaLatSegundo || undefined,
+          coordenadaLonGrau: input.coordenadaLonGrau || undefined,
+          coordenadaLonMinuto: input.coordenadaLonMinuto || undefined,
+          coordenadaLonSegundo: input.coordenadaLonSegundo || undefined,
+          datum: input.datum || undefined,
+          municipioEstado: input.municipioEstado || undefined,
+          vistoriadoPor: input.vistoriadoPor || undefined,
+          assinatura: input.assinatura || undefined,
+          cargo: input.cargo || undefined,
+          dataVistoria: input.dataVistoria ? new Date(input.dataVistoria) : undefined,
+          vistoriaNumero: input.vistoriaNumero || undefined,
+          cotaAtualNivelAgua: input.cotaAtualNivelAgua || undefined,
+          bacia: input.bacia || undefined,
+          cursoDAguaBarrado: input.cursoDAguaBarrado || undefined,
+          empreendedor: input.empreendedor || undefined,
+          nivelPerigoGlobal: input.nivelPerigoGlobal ?? undefined,
+          outrosProblemas: input.outrosProblemas || undefined,
+          sugestoesRecomendacoes: input.sugestoesRecomendacoes || undefined,
+        };
+
+        const questionarioId = await db.createQuestionario(questionarioData);
+
+        // Criar itens do questionário
+        if (input.itens && input.itens.length > 0) {
+          for (const item of input.itens) {
+            await db.createQuestionarioItem({
+              questionarioId,
+              secao: item.secao,
+              numero: item.numero,
+              descricao: item.descricao,
+              situacao: item.situacao ?? null,
+              magnitude: item.magnitude ?? null,
+              nivelPerigo: item.nivelPerigo ?? null,
+              comentario: item.comentario ?? null,
+            });
+          }
+        }
+
+        // Criar comentários das seções
+        if (input.comentariosSecoes) {
+          for (const [codigoSecao, comentario] of Object.entries(input.comentariosSecoes)) {
+            if (comentario && comentario.trim() !== "") {
+              await db.createQuestionarioComentarioSecao({
+                questionarioId,
+                codigoSecao,
+                comentario,
+              });
+            }
+          }
+        }
+
+        return { id: questionarioId, success: true };
+      }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          data: z.object({
+            nomeBarragem: z.string().optional(),
+            coordenadaLatGrau: z.string().optional(),
+            coordenadaLatMinuto: z.string().optional(),
+            coordenadaLatSegundo: z.string().optional(),
+            coordenadaLonGrau: z.string().optional(),
+            coordenadaLonMinuto: z.string().optional(),
+            coordenadaLonSegundo: z.string().optional(),
+            datum: z.string().optional(),
+            municipioEstado: z.string().optional(),
+            vistoriadoPor: z.string().optional(),
+            assinatura: z.string().optional(),
+            cargo: z.string().optional(),
+            dataVistoria: z.string().optional(),
+            vistoriaNumero: z.string().optional(),
+            cotaAtualNivelAgua: z.string().optional(),
+            bacia: z.string().optional(),
+            cursoDAguaBarrado: z.string().optional(),
+            empreendedor: z.string().optional(),
+            nivelPerigoGlobal: z.number().optional(),
+            outrosProblemas: z.string().optional(),
+            sugestoesRecomendacoes: z.string().optional(),
+          }),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const updateData: any = { ...input.data };
+        if (updateData.dataVistoria) {
+          updateData.dataVistoria = new Date(updateData.dataVistoria);
+        }
+        await db.updateQuestionario(input.id, updateData);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteQuestionario(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ============================================================================
   // DASHBOARD
   // ============================================================================
 

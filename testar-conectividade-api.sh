@@ -122,3 +122,5 @@ echo "  3. Verifique se o IP/porta estão corretos"
 echo "  4. Teste manualmente: curl $TEST_URL/swagger"
 echo ""
 
+
+

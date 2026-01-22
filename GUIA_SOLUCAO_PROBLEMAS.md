@@ -233,3 +233,5 @@ Após iniciar o sistema:
 - `.\iniciar-sistema.ps1` - Iniciar sistema (requer .env configurado)
 - `.\rodar-offline.ps1` - Rodar em modo offline com SQL online
 
+
+

@@ -120,3 +120,5 @@ npx --yes pnpm dev
 
 Isso mostrará erros mais detalhados e recarregará automaticamente quando você fizer mudanças.
 
+
+

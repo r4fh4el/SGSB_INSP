@@ -646,3 +646,100 @@ export interface InsertAuditoria {
   createdAt?: Date;
 }
 
+// ============================================================================
+// QUESTIONÁRIO DE INSPEÇÃO REGULAR DE BARRAGEM DE TERRA
+// ============================================================================
+
+export interface QuestionarioRecord {
+  id: number;
+  barragemId: number;
+  usuarioId: string;
+  nomeBarragem: string | null;
+  coordenadaLatGrau: string | null;
+  coordenadaLatMinuto: string | null;
+  coordenadaLatSegundo: string | null;
+  coordenadaLonGrau: string | null;
+  coordenadaLonMinuto: string | null;
+  coordenadaLonSegundo: string | null;
+  datum: string | null;
+  municipioEstado: string | null;
+  vistoriadoPor: string | null;
+  assinatura: string | null;
+  cargo: string | null;
+  dataVistoria: Date | null;
+  vistoriaNumero: string | null;
+  cotaAtualNivelAgua: string | null;
+  bacia: string | null;
+  cursoDAguaBarrado: string | null;
+  empreendedor: string | null;
+  nivelPerigoGlobal: number | null;
+  outrosProblemas: string | null;
+  sugestoesRecomendacoes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InsertQuestionario {
+  barragemId: number;
+  usuarioId: string;
+  nomeBarragem?: string | null;
+  coordenadaLatGrau?: string | null;
+  coordenadaLatMinuto?: string | null;
+  coordenadaLatSegundo?: string | null;
+  coordenadaLonGrau?: string | null;
+  coordenadaLonMinuto?: string | null;
+  coordenadaLonSegundo?: string | null;
+  datum?: string | null;
+  municipioEstado?: string | null;
+  vistoriadoPor?: string | null;
+  assinatura?: string | null;
+  cargo?: string | null;
+  dataVistoria?: Date | null;
+  vistoriaNumero?: string | null;
+  cotaAtualNivelAgua?: string | null;
+  bacia?: string | null;
+  cursoDAguaBarrado?: string | null;
+  empreendedor?: string | null;
+  nivelPerigoGlobal?: number | null;
+  outrosProblemas?: string | null;
+  sugestoesRecomendacoes?: string | null;
+}
+
+export interface QuestionarioItemRecord {
+  id: number;
+  questionarioId: number;
+  secao: string;
+  numero: number;
+  descricao: string;
+  situacao: "NA" | "NE" | "PV" | "DS" | "DI" | "PC" | "AU" | "NI" | null;
+  magnitude: "I" | "P" | "M" | "G" | null;
+  nivelPerigo: number | null;
+  comentario: string | null;
+  createdAt: Date;
+}
+
+export interface InsertQuestionarioItem {
+  questionarioId: number;
+  secao: string;
+  numero: number;
+  descricao: string;
+  situacao?: "NA" | "NE" | "PV" | "DS" | "DI" | "PC" | "AU" | "NI" | null;
+  magnitude?: "I" | "P" | "M" | "G" | null;
+  nivelPerigo?: number | null;
+  comentario?: string | null;
+}
+
+export interface QuestionarioComentarioSecaoRecord {
+  id: number;
+  questionarioId: number;
+  codigoSecao: string;
+  comentario: string | null;
+  createdAt: Date;
+}
+
+export interface InsertQuestionarioComentarioSecao {
+  questionarioId: number;
+  codigoSecao: string;
+  comentario?: string | null;
+}
+

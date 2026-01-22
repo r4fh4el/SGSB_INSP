@@ -99,3 +99,5 @@ Se ainda encontrar problemas após aplicar esta correção:
 3. Confirme que o script SQL foi executado com sucesso
 4. Verifique se a coluna foi renomeada corretamente
 
+
+

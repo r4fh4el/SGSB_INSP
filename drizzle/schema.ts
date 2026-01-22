@@ -570,6 +570,82 @@ export type InsertRelatorio = typeof relatorios.$inferInsert;
 // LOG DE AUDITORIA
 // ============================================================================
 
+// ============================================================================
+// QUESTIONÁRIO DE INSPEÇÃO REGULAR DE BARRAGEM DE TERRA
+// ============================================================================
+
+export const questionarios = mysqlTable("questionarios", {
+  id: int("id").primaryKey().autoincrement(),
+  barragemId: int("barragemId").notNull().references(() => barragens.id, { onDelete: "cascade" }),
+  usuarioId: varchar("usuarioId", { length: 64 }).notNull().references(() => users.id),
+  
+  // Dados Gerais
+  nomeBarragem: varchar("nomeBarragem", { length: 255 }),
+  coordenadaLatGrau: varchar("coordenadaLatGrau", { length: 10 }),
+  coordenadaLatMinuto: varchar("coordenadaLatMinuto", { length: 10 }),
+  coordenadaLatSegundo: varchar("coordenadaLatSegundo", { length: 10 }),
+  coordenadaLonGrau: varchar("coordenadaLonGrau", { length: 10 }),
+  coordenadaLonMinuto: varchar("coordenadaLonMinuto", { length: 10 }),
+  coordenadaLonSegundo: varchar("coordenadaLonSegundo", { length: 10 }),
+  datum: varchar("datum", { length: 50 }),
+  municipioEstado: varchar("municipioEstado", { length: 255 }),
+  vistoriadoPor: varchar("vistoriadoPor", { length: 255 }),
+  assinatura: varchar("assinatura", { length: 255 }),
+  cargo: varchar("cargo", { length: 255 }),
+  dataVistoria: datetime("dataVistoria"),
+  vistoriaNumero: varchar("vistoriaNumero", { length: 50 }),
+  cotaAtualNivelAgua: varchar("cotaAtualNivelAgua", { length: 50 }),
+  bacia: varchar("bacia", { length: 255 }),
+  cursoDAguaBarrado: varchar("cursoDAguaBarrado", { length: 255 }),
+  empreendedor: varchar("empreendedor", { length: 255 }),
+  nivelPerigoGlobal: int("nivelPerigoGlobal"), // 0, 1, 2, 3
+  
+  // Seções J e K
+  outrosProblemas: text("outrosProblemas"),
+  sugestoesRecomendacoes: text("sugestoesRecomendacoes"),
+  
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export type Questionario = typeof questionarios.$inferSelect;
+export type InsertQuestionario = typeof questionarios.$inferInsert;
+
+export const questionarioItens = mysqlTable("questionarioItens", {
+  id: int("id").primaryKey().autoincrement(),
+  questionarioId: int("questionarioId").notNull().references(() => questionarios.id, { onDelete: "cascade" }),
+  
+  secao: varchar("secao", { length: 10 }).notNull(), // A, B.1, B.2, etc
+  numero: int("numero").notNull(),
+  descricao: text("descricao").notNull(),
+  
+  situacao: mysqlEnum("situacao", ["NA", "NE", "PV", "DS", "DI", "PC", "AU", "NI"]),
+  magnitude: mysqlEnum("magnitude", ["I", "P", "M", "G"]),
+  nivelPerigo: int("nivelPerigo"), // 0, 1, 2, 3
+  
+  comentario: text("comentario"),
+  
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export type QuestionarioItem = typeof questionarioItens.$inferSelect;
+export type InsertQuestionarioItem = typeof questionarioItens.$inferInsert;
+
+export const questionarioComentariosSecoes = mysqlTable("questionarioComentariosSecoes", {
+  id: int("id").primaryKey().autoincrement(),
+  questionarioId: int("questionarioId").notNull().references(() => questionarios.id, { onDelete: "cascade" }),
+  codigoSecao: varchar("codigoSecao", { length: 10 }).notNull(), // A, B.1, etc
+  comentario: text("comentario"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export type QuestionarioComentarioSecao = typeof questionarioComentariosSecoes.$inferSelect;
+export type InsertQuestionarioComentarioSecao = typeof questionarioComentariosSecoes.$inferInsert;
+
+// ============================================================================
+// AUDITORIA
+// ============================================================================
+
 export const auditoria = mysqlTable("auditoria", {
   id: int("id").primaryKey().autoincrement(),
   usuarioId: varchar("usuarioId", { length: 64 }).references(() => users.id),
@@ -597,6 +673,7 @@ export const barragensRelations = relations(barragens, ({ many }) => ({
   estruturas: many(estruturas),
   instrumentos: many(instrumentos),
   checklists: many(checklists),
+  questionarios: many(questionarios),
   ocorrencias: many(ocorrencias),
   hidrometria: many(hidrometria),
   documentos: many(documentos),
@@ -641,6 +718,33 @@ export const checklistsRelations = relations(checklists, ({ one, many }) => ({
     references: [users.id],
   }),
   respostas: many(respostasChecklist),
+}));
+
+export const questionariosRelations = relations(questionarios, ({ one, many }) => ({
+  barragem: one(barragens, {
+    fields: [questionarios.barragemId],
+    references: [barragens.id],
+  }),
+  usuario: one(users, {
+    fields: [questionarios.usuarioId],
+    references: [users.id],
+  }),
+  itens: many(questionarioItens),
+  comentariosSecoes: many(questionarioComentariosSecoes),
+}));
+
+export const questionarioItensRelations = relations(questionarioItens, ({ one }) => ({
+  questionario: one(questionarios, {
+    fields: [questionarioItens.questionarioId],
+    references: [questionarios.id],
+  }),
+}));
+
+export const questionarioComentariosSecoesRelations = relations(questionarioComentariosSecoes, ({ one }) => ({
+  questionario: one(questionarios, {
+    fields: [questionarioComentariosSecoes.questionarioId],
+    references: [questionarios.id],
+  }),
 }));
 
 export const ocorrenciasRelations = relations(ocorrencias, ({ one }) => ({

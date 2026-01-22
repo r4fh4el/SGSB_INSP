@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { AlertCircle, BarChart3, Building2, Calculator, CheckSquare, FileText, Gauge, Home, LogOut, PanelLeft, Settings, Shield, Users, Wrench, Zap } from "lucide-react";
+import { AlertCircle, BarChart3, Building2, Calculator, CheckSquare, FileText, Gauge, Home, LogOut, PanelLeft, Settings, Shield, Users, Wrench, Zap, ClipboardList, Droplets } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -32,8 +32,10 @@ const menuItems = [
   { icon: Building2, label: "Barragens", path: "/barragens", roles: [] },
   { icon: Gauge, label: "Instrumentação", path: "/instrumentos", roles: [] },
   { icon: CheckSquare, label: "Checklists", path: "/checklists", roles: [] },
+  { icon: ClipboardList, label: "Questionário", path: "/questionario", roles: [] },
   { icon: Calculator, label: "Caracterização", path: "/caracterizacao", roles: [] },
   { icon: Zap, label: "Cálculo Automático", path: "/calculo-automatico", roles: [] },
+  { icon: Droplets, label: "Balanço Hídrico", path: "/balanco-hidrico", roles: [] },
   { icon: AlertCircle, label: "Ocorrências", path: "/ocorrencias", roles: [] },
   { icon: BarChart3, label: "Hidrometria", path: "/hidrometria", roles: [] },
   { icon: FileText, label: "Documentos", path: "/documentos", roles: [] },

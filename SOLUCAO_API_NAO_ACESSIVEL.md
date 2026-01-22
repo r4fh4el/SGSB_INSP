@@ -249,3 +249,5 @@ HIDRO_API_URL=http://108.181.193.92:5204
    - Tente fazer um cálculo
    - Verifique se o erro desapareceu
 
+
+

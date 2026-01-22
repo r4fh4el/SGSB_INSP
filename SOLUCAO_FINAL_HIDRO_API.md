@@ -134,3 +134,5 @@ curl "http://72.60.57.220:5204/API/BuscarCalculosAutomaticosPorBarragem?barragem
 
 O código agora corrige automaticamente problemas comuns, mas é sempre melhor ter o `.env` correto desde o início!
 
+
+

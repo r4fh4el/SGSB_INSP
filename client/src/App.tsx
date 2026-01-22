@@ -17,6 +17,8 @@ import Manutencoes from "./pages/Manutencoes";
 import Alertas from "./pages/Alertas";
 import Usuarios from "./pages/Usuarios";
 import Configuracoes from "./pages/Configuracoes";
+import Questionario from "./pages/Questionario";
+import BalancoHidrico from "./pages/BalancoHidrico";
 import MobileHome from "./mobile/pages/MobileHome";
 import MobileChecklists from "./mobile/pages/MobileChecklists";
 import MobileBarragens from "./mobile/pages/MobileBarragens";
@@ -39,6 +41,8 @@ function Router() {
       <Route path="/alertas" component={Alertas} />
       <Route path="/usuarios" component={Usuarios} />
       <Route path="/configuracoes" component={Configuracoes} />
+      <Route path="/questionario" component={Questionario} />
+      <Route path="/balanco-hidrico" component={BalancoHidrico} />
       <Route path="/mobile" component={MobileHome} />
       <Route path="/mobile/checklists" component={MobileChecklists} />
       <Route path="/mobile/barragens" component={MobileBarragens} />

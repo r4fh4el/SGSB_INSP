@@ -161,3 +161,5 @@ Procure por estas mensagens de erro comuns:
 
 4. **Compartilhe os erros** que aparecem no terminal para diagnóstico mais específico
 
+
+

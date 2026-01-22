@@ -129,3 +129,5 @@ Se após seguir todos os passos ainda houver problemas:
 
 O código agora tem timeout de 5 segundos, então não vai mais travar indefinidamente. Se demorar mais que isso, significa que a porta realmente não está acessível.
 
+
+

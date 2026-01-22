@@ -51,3 +51,5 @@ if ($nodeProcesses) {
     Write-Host "  Servidor nao esta rodando" -ForegroundColor Red
 }
 
+
+

@@ -15,6 +15,9 @@ import type {
   InsertManutencao,
   InsertOcorrencia,
   InsertPerguntaChecklist,
+  InsertQuestionario,
+  InsertQuestionarioItem,
+  InsertQuestionarioComentarioSecao,
   InsertRespostaChecklist,
   InsertUser,
 } from "@shared/dbTypes";
@@ -3146,5 +3149,242 @@ export async function getDashboardData(barragemId: number) {
       alertasNaoLidos: alertasNaoLidos.length,
     },
   };
+}
+
+// ============================================================================
+// QUESTIONÁRIO DE INSPEÇÃO REGULAR DE BARRAGEM DE TERRA
+// ============================================================================
+
+export async function createQuestionario(data: InsertQuestionario) {
+  const result = await runQuery<{ id: number }>(
+    `INSERT INTO dbo.questionarios (
+      barragemId,
+      usuarioId,
+      nomeBarragem,
+      coordenadaLatGrau,
+      coordenadaLatMinuto,
+      coordenadaLatSegundo,
+      coordenadaLonGrau,
+      coordenadaLonMinuto,
+      coordenadaLonSegundo,
+      datum,
+      municipioEstado,
+      vistoriadoPor,
+      assinatura,
+      cargo,
+      dataVistoria,
+      vistoriaNumero,
+      cotaAtualNivelAgua,
+      bacia,
+      cursoDAguaBarrado,
+      empreendedor,
+      nivelPerigoGlobal,
+      outrosProblemas,
+      sugestoesRecomendacoes
+    ) OUTPUT INSERTED.id VALUES (
+      @barragemId,
+      @usuarioId,
+      @nomeBarragem,
+      @coordenadaLatGrau,
+      @coordenadaLatMinuto,
+      @coordenadaLatSegundo,
+      @coordenadaLonGrau,
+      @coordenadaLonMinuto,
+      @coordenadaLonSegundo,
+      @datum,
+      @municipioEstado,
+      @vistoriadoPor,
+      @assinatura,
+      @cargo,
+      @dataVistoria,
+      @vistoriaNumero,
+      @cotaAtualNivelAgua,
+      @bacia,
+      @cursoDAguaBarrado,
+      @empreendedor,
+      @nivelPerigoGlobal,
+      @outrosProblemas,
+      @sugestoesRecomendacoes
+    );`,
+    (request) => {
+      request.input("barragemId", sqlServer.Int, data.barragemId);
+      request.input("usuarioId", sqlServer.NVarChar(64), data.usuarioId);
+      request.input("nomeBarragem", sqlServer.NVarChar(255), data.nomeBarragem ?? null);
+      request.input("coordenadaLatGrau", sqlServer.NVarChar(10), data.coordenadaLatGrau ?? null);
+      request.input("coordenadaLatMinuto", sqlServer.NVarChar(10), data.coordenadaLatMinuto ?? null);
+      request.input("coordenadaLatSegundo", sqlServer.NVarChar(10), data.coordenadaLatSegundo ?? null);
+      request.input("coordenadaLonGrau", sqlServer.NVarChar(10), data.coordenadaLonGrau ?? null);
+      request.input("coordenadaLonMinuto", sqlServer.NVarChar(10), data.coordenadaLonMinuto ?? null);
+      request.input("coordenadaLonSegundo", sqlServer.NVarChar(10), data.coordenadaLonSegundo ?? null);
+      request.input("datum", sqlServer.NVarChar(50), data.datum ?? null);
+      request.input("municipioEstado", sqlServer.NVarChar(255), data.municipioEstado ?? null);
+      request.input("vistoriadoPor", sqlServer.NVarChar(255), data.vistoriadoPor ?? null);
+      request.input("assinatura", sqlServer.NVarChar(255), data.assinatura ?? null);
+      request.input("cargo", sqlServer.NVarChar(255), data.cargo ?? null);
+      request.input("dataVistoria", sqlServer.DateTime2, toDate(data.dataVistoria));
+      request.input("vistoriaNumero", sqlServer.NVarChar(50), data.vistoriaNumero ?? null);
+      request.input("cotaAtualNivelAgua", sqlServer.NVarChar(50), data.cotaAtualNivelAgua ?? null);
+      request.input("bacia", sqlServer.NVarChar(255), data.bacia ?? null);
+      request.input("cursoDAguaBarrado", sqlServer.NVarChar(255), data.cursoDAguaBarrado ?? null);
+      request.input("empreendedor", sqlServer.NVarChar(255), data.empreendedor ?? null);
+      request.input("nivelPerigoGlobal", sqlServer.Int, data.nivelPerigoGlobal ?? null);
+      request.input("outrosProblemas", sqlServer.NVarChar(sqlServer.MAX), data.outrosProblemas ?? null);
+      request.input("sugestoesRecomendacoes", sqlServer.NVarChar(sqlServer.MAX), data.sugestoesRecomendacoes ?? null);
+    }
+  );
+
+  return result.recordset[0]?.id ?? 0;
+}
+
+export async function createQuestionarioItem(data: InsertQuestionarioItem) {
+  const result = await runQuery<{ id: number }>(
+    `INSERT INTO dbo.questionarioItens (
+      questionarioId,
+      secao,
+      numero,
+      descricao,
+      situacao,
+      magnitude,
+      nivelPerigo,
+      comentario
+    ) OUTPUT INSERTED.id VALUES (
+      @questionarioId,
+      @secao,
+      @numero,
+      @descricao,
+      @situacao,
+      @magnitude,
+      @nivelPerigo,
+      @comentario
+    );`,
+    (request) => {
+      request.input("questionarioId", sqlServer.Int, data.questionarioId);
+      request.input("secao", sqlServer.NVarChar(10), data.secao);
+      request.input("numero", sqlServer.Int, data.numero);
+      request.input("descricao", sqlServer.NVarChar(sqlServer.MAX), data.descricao);
+      request.input("situacao", sqlServer.NVarChar(10), data.situacao ?? null);
+      request.input("magnitude", sqlServer.NVarChar(10), data.magnitude ?? null);
+      request.input("nivelPerigo", sqlServer.Int, data.nivelPerigo ?? null);
+      request.input("comentario", sqlServer.NVarChar(sqlServer.MAX), data.comentario ?? null);
+    }
+  );
+
+  return result.recordset[0]?.id ?? 0;
+}
+
+export async function createQuestionarioComentarioSecao(data: InsertQuestionarioComentarioSecao) {
+  const result = await runQuery<{ id: number }>(
+    `INSERT INTO dbo.questionarioComentariosSecoes (
+      questionarioId,
+      codigoSecao,
+      comentario
+    ) OUTPUT INSERTED.id VALUES (
+      @questionarioId,
+      @codigoSecao,
+      @comentario
+    );`,
+    (request) => {
+      request.input("questionarioId", sqlServer.Int, data.questionarioId);
+      request.input("codigoSecao", sqlServer.NVarChar(10), data.codigoSecao);
+      request.input("comentario", sqlServer.NVarChar(sqlServer.MAX), data.comentario ?? null);
+    }
+  );
+
+  return result.recordset[0]?.id ?? 0;
+}
+
+export async function getQuestionariosByBarragem(barragemId: number, limit = 20) {
+  const result = await runQuery<InsertQuestionario & { id: number }>(
+    `SELECT TOP (@limit) *
+     FROM dbo.questionarios
+     WHERE barragemId = @barragemId
+     ORDER BY createdAt DESC`,
+    (request) => {
+      request.input("limit", sqlServer.Int, limit);
+      request.input("barragemId", sqlServer.Int, barragemId);
+    }
+  );
+
+  return result.recordset;
+}
+
+export async function getQuestionarioById(id: number) {
+  const result = await runQuery<InsertQuestionario & { id: number }>(
+    `SELECT TOP 1 * FROM dbo.questionarios WHERE id = @id`,
+    (request) => {
+      request.input("id", sqlServer.Int, id);
+    }
+  );
+
+  return result.recordset[0];
+}
+
+export async function getQuestionarioItensByQuestionario(questionarioId: number) {
+  const result = await runQuery<InsertQuestionarioItem & { id: number }>(
+    `SELECT * FROM dbo.questionarioItens WHERE questionarioId = @questionarioId ORDER BY secao, numero`,
+    (request) => {
+      request.input("questionarioId", sqlServer.Int, questionarioId);
+    }
+  );
+
+  return result.recordset;
+}
+
+export async function getQuestionarioComentariosSecoes(questionarioId: number) {
+  const result = await runQuery<InsertQuestionarioComentarioSecao & { id: number }>(
+    `SELECT * FROM dbo.questionarioComentariosSecoes WHERE questionarioId = @questionarioId`,
+    (request) => {
+      request.input("questionarioId", sqlServer.Int, questionarioId);
+    }
+  );
+
+  return result.recordset;
+}
+
+export async function updateQuestionario(id: number, data: Partial<InsertQuestionario>) {
+  const { updates, apply } = buildUpdateFragments(data as Record<string, unknown>, {
+    nomeBarragem: { type: sqlServer.NVarChar(255) },
+    coordenadaLatGrau: { type: sqlServer.NVarChar(10) },
+    coordenadaLatMinuto: { type: sqlServer.NVarChar(10) },
+    coordenadaLatSegundo: { type: sqlServer.NVarChar(10) },
+    coordenadaLonGrau: { type: sqlServer.NVarChar(10) },
+    coordenadaLonMinuto: { type: sqlServer.NVarChar(10) },
+    coordenadaLonSegundo: { type: sqlServer.NVarChar(10) },
+    datum: { type: sqlServer.NVarChar(50) },
+    municipioEstado: { type: sqlServer.NVarChar(255) },
+    vistoriadoPor: { type: sqlServer.NVarChar(255) },
+    assinatura: { type: sqlServer.NVarChar(255) },
+    cargo: { type: sqlServer.NVarChar(255) },
+    dataVistoria: { type: sqlServer.DateTime2, transform: toDate },
+    vistoriaNumero: { type: sqlServer.NVarChar(50) },
+    cotaAtualNivelAgua: { type: sqlServer.NVarChar(50) },
+    bacia: { type: sqlServer.NVarChar(255) },
+    cursoDAguaBarrado: { type: sqlServer.NVarChar(255) },
+    empreendedor: { type: sqlServer.NVarChar(255) },
+    nivelPerigoGlobal: { type: sqlServer.Int },
+    outrosProblemas: { type: sqlServer.NVarChar(sqlServer.MAX) },
+    sugestoesRecomendacoes: { type: sqlServer.NVarChar(sqlServer.MAX) },
+  });
+
+  if (updates.length === 0) return;
+
+  updates.push("updatedAt = SYSDATETIME()");
+
+  await runQuery(
+    `UPDATE dbo.questionarios SET ${updates.join(", ")} WHERE id = @id`,
+    (request) => {
+      request.input("id", sqlServer.Int, id);
+      apply(request);
+    }
+  );
+}
+
+export async function deleteQuestionario(id: number) {
+  await runQuery(
+    `DELETE FROM dbo.questionarios WHERE id = @id`,
+    (request) => {
+      request.input("id", sqlServer.Int, id);
+    }
+  );
 }
 

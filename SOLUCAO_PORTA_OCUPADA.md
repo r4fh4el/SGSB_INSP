@@ -70,3 +70,5 @@ Para evitar esse problema no futuro, você pode:
 2. Usar uma porta diferente no `.env`
 3. Usar o script `liberar-porta.ps1` antes de iniciar
 
+
+

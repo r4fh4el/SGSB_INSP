@@ -140,24 +140,27 @@ async function startServer() {
         return res.status(400).json({ error: "barragemId é obrigatório" });
       }
 
-      const { hidroApiUrl } = await import("./env");
+      const { ENV } = await import("./env");
+      const hidroApiUrl = ENV.hidroApiUrl;
       
       // Debug detalhado
       console.log("[Proxy] === DEBUG HIDRO_API_URL ===");
       console.log("[Proxy] process.env.HIDRO_API_URL (raw):", process.env.HIDRO_API_URL);
-      console.log("[Proxy] hidroApiUrl (from env.ts):", hidroApiUrl);
+      console.log("[Proxy] hidroApiUrl (from ENV.hidroApiUrl):", hidroApiUrl);
       console.log("[Proxy] hidroApiUrl.trim():", hidroApiUrl?.trim());
       console.log("[Proxy] isEmpty:", !hidroApiUrl || hidroApiUrl.trim() === "");
       
       if (!hidroApiUrl || hidroApiUrl.trim() === "") {
         console.error("[Proxy] ❌ HIDRO_API_URL não configurada ou vazia");
         console.error("[Proxy] process.env.HIDRO_API_URL:", process.env.HIDRO_API_URL);
+        console.error("[Proxy] ENV.hidroApiUrl:", ENV.hidroApiUrl);
         console.error("[Proxy] Verifique se a variável está no arquivo .env e se o servidor foi reiniciado");
         return res.status(500).json({ 
           error: "HIDRO_API_URL não configurada",
           debug: process.env.NODE_ENV === "development" ? {
             raw: process.env.HIDRO_API_URL,
-            processed: hidroApiUrl
+            processed: hidroApiUrl,
+            fromENV: ENV.hidroApiUrl
           } : undefined
         });
       }

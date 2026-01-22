@@ -216,3 +216,5 @@ HIDRO_API_URL=http://localhost:5204
 - `SGSB_INSP/server/_core/env.ts` - Carregamento das variáveis
 - `SGSB_INSP/server/_core/index.ts` - Validação da variável (linha 143-146)
 
+
+

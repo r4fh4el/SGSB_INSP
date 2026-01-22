@@ -208,3 +208,5 @@ ORDER BY TABLE_NAME
 - `SGSB_INSP/testar-banco-completo.ps1` - Script de teste
 - `SGSB_INSP/testar-conexao-sql-detalhado.js` - Teste Node.js
 
+
+

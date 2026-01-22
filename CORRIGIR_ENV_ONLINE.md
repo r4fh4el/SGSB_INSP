@@ -106,3 +106,5 @@ sudo firewall-cmd --reload
 - [ ] Firewall permite porta 80
 - [ ] Servidor foi reiniciado após alterar .env
 
+
+

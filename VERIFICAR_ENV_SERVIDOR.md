@@ -167,3 +167,5 @@ O arquivo deve ser legível pelo usuário que executa o Node.js.
 
 Se você alterou o `.env` mas não reiniciou o servidor, a variável antiga ainda está em memória. **Sempre reinicie após alterar o `.env`!**
 
+
+
