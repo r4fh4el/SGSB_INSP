@@ -1330,6 +1330,77 @@ export const appRouter = router({
   }),
 
   // ============================================================================
+  // METEOROLOGIA / PLUVIOSIDADE
+  // ============================================================================
+
+  meteorologia: router({
+    buscarPluviosidadeMontante: protectedProcedure
+      .input(
+        z.object({
+          barragemId: z.number(),
+          raioKm: z.number().optional().default(1.0),
+          numPontos: z.number().optional().default(5),
+        })
+      )
+      .query(async ({ input }) => {
+        // Buscar barragem para obter coordenadas
+        const barragem = await db.getBarragemById(input.barragemId);
+        if (!barragem) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Barragem não encontrada",
+          });
+        }
+
+        if (!barragem.latitude || !barragem.longitude) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Barragem não possui coordenadas cadastradas (latitude/longitude)",
+          });
+        }
+
+        const latitude = parseFloat(barragem.latitude);
+        const longitude = parseFloat(barragem.longitude);
+
+        if (isNaN(latitude) || isNaN(longitude)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Coordenadas da barragem são inválidas",
+          });
+        }
+
+        // Importar função de busca de pluviosidade
+        const { buscarPluviosidadeMediaMontante } = await import("./_core/openMeteo");
+
+        try {
+          const resultado = await buscarPluviosidadeMediaMontante(
+            latitude,
+            longitude,
+            input.raioKm,
+            input.numPontos
+          );
+
+          return {
+            success: true,
+            ...resultado,
+            barragem: {
+              id: barragem.id,
+              nome: barragem.nome,
+              codigo: barragem.codigo,
+              latitude: barragem.latitude,
+              longitude: barragem.longitude,
+            },
+          };
+        } catch (error: any) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error.message || "Erro ao buscar dados de pluviosidade",
+          });
+        }
+      }),
+  }),
+
+  // ============================================================================
   // DASHBOARD
   // ============================================================================
 

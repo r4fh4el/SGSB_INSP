@@ -241,7 +241,7 @@ async function startServer() {
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       
       const barragens = await db.getAllBarragens();
-      const barragensComRisco = barragens.map(b => ({
+      const barragensComRisco = barragens.map((b: any) => ({
         id: b.id,
         codigo: b.codigo,
         nome: b.nome,
@@ -266,8 +266,347 @@ async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      onError: (opts: { error: any; path?: string; type?: string }) => {
+        const { error, path } = opts;
+        console.error(`[tRPC] Erro em ${path ?? "unknown"}:`, error);
+        if (error.code === "NOT_FOUND") {
+          console.error(`[tRPC] Procedimento não encontrado: ${path}`);
+        }
+      },
     })
   );
+  
+  // Handler para requisições GET em /api/trpc (retorna informação útil)
+  app.get("/api/trpc", (_req, res) => {
+    res.status(400).json({
+      error: "tRPC endpoint requires POST requests",
+      message: "Use the tRPC client or make POST requests to specific procedures",
+      example: "POST /api/trpc/barragens.list",
+      availableRouters: [
+        "barragens",
+        "instrumentos",
+        "checklists",
+        "questionarios",
+        "leituras",
+        "ocorrencias",
+        "hidrometria",
+        "documentos",
+        "manutencoes",
+        "alertas",
+        "dashboard",
+        "users",
+        "auth",
+      ],
+    });
+  });
+
+  // Interface interativa para testar a API tRPC (similar ao Swagger)
+  app.get("/api/panel", (_req, res) => {
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tRPC API Panel - SGSB_INSP</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #60a5fa;
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 30px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      height: calc(100vh - 150px);
+    }
+    .sidebar {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .router-group {
+      margin-bottom: 20px;
+    }
+    .router-name {
+      color: #60a5fa;
+      font-weight: 600;
+      margin-bottom: 10px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .router-name:hover {
+      background: #334155;
+    }
+    .procedure {
+      padding: 6px 8px 6px 20px;
+      color: #cbd5e1;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .procedure:hover {
+      background: #334155;
+    }
+    .procedure.active {
+      background: #3b82f6;
+      color: white;
+    }
+    .main-panel {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 30px;
+      overflow-y: auto;
+    }
+    .endpoint-info {
+      margin-bottom: 30px;
+    }
+    .endpoint-path {
+      background: #0f172a;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      color: #60a5fa;
+      margin: 10px 0;
+      word-break: break-all;
+    }
+    .method-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+    .method-get { background: #3b82f6; color: white; }
+    .method-post { background: #10b981; color: white; }
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 15px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    button:disabled {
+      background: #475569;
+      cursor: not-allowed;
+    }
+    .response {
+      margin-top: 20px;
+      padding: 15px;
+      background: #0f172a;
+      border-radius: 6px;
+      border: 1px solid #334155;
+    }
+    .response pre {
+      color: #10b981;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .error {
+      color: #ef4444;
+    }
+    .loading {
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 tRPC API Panel</h1>
+    <p class="subtitle">Interface interativa para testar a API tRPC do SGSB_INSP</p>
+    
+    <div class="grid">
+      <div class="sidebar">
+        <div id="routers-list"></div>
+      </div>
+      
+      <div class="main-panel">
+        <div id="endpoint-view">
+          <p style="color: #94a3b8;">Selecione um endpoint no menu lateral para começar</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const routers = {
+      auth: { me: 'query', logout: 'mutation' },
+      users: { list: 'query', updateRole: 'mutation', toggleStatus: 'mutation' },
+      barragens: { list: 'query', getById: 'query', create: 'mutation', update: 'mutation', delete: 'mutation' },
+      instrumentos: { list: 'query', getById: 'query', getByCodigo: 'query', create: 'mutation', update: 'mutation', delete: 'mutation', leituras: 'query', createLeitura: 'mutation', deleteLeitura: 'mutation' },
+      checklists: { list: 'query', listByBarragem: 'query', getById: 'query', create: 'mutation', update: 'mutation', delete: 'mutation', listPerguntas: 'query', createPergunta: 'mutation', createResposta: 'mutation', getCaracterizacao: 'query', createCaracterizacao: 'mutation', updateCaracterizacao: 'mutation' },
+      questionarios: { list: 'query', listByBarragem: 'query', getById: 'query', create: 'mutation', update: 'mutation', delete: 'mutation' },
+      leituras: { listByInstrumento: 'query', listByBarragem: 'query', countByBarragem: 'query', getUltima: 'query', listInconsistencias: 'query', create: 'mutation', delete: 'mutation' },
+      ocorrencias: { listByBarragem: 'query', getById: 'query', create: 'mutation', update: 'mutation', delete: 'mutation' },
+      hidrometria: { listByBarragem: 'query', getUltima: 'query', create: 'mutation', update: 'mutation', delete: 'mutation' },
+      documentos: { listByBarragem: 'query', getById: 'query', create: 'mutation', update: 'mutation', delete: 'mutation', upload: 'mutation' },
+      manutencoes: { listByBarragem: 'query', create: 'mutation', update: 'mutation', delete: 'mutation' },
+      alertas: { listByBarragem: 'query', marcarLido: 'mutation' },
+      dashboard: { getData: 'query' }
+    };
+
+    function renderSidebar() {
+      const container = document.getElementById('routers-list');
+      container.innerHTML = '';
+      
+      Object.keys(routers).forEach(routerName => {
+        const routerDiv = document.createElement('div');
+        routerDiv.className = 'router-group';
+        
+        const routerTitle = document.createElement('div');
+        routerTitle.className = 'router-name';
+        routerTitle.textContent = routerName;
+        routerTitle.onclick = () => {
+          document.querySelectorAll('.procedure').forEach(p => p.classList.remove('active'));
+        };
+        routerDiv.appendChild(routerTitle);
+        
+        Object.keys(routers[routerName]).forEach(procedure => {
+          const procDiv = document.createElement('div');
+          procDiv.className = 'procedure';
+          procDiv.textContent = procedure;
+          procDiv.onclick = () => {
+            document.querySelectorAll('.procedure').forEach(p => p.classList.remove('active'));
+            procDiv.classList.add('active');
+            showEndpoint(routerName, procedure, routers[routerName][procedure]);
+          };
+          routerDiv.appendChild(procDiv);
+        });
+        
+        container.appendChild(routerDiv);
+      });
+    }
+
+    function showEndpoint(router, procedure, type) {
+      const endpoint = \`\${router}.\${procedure}\`;
+      const method = type === 'query' ? 'GET' : 'POST';
+      const url = \`/api/trpc/\${endpoint}\`;
+      
+      const view = document.getElementById('endpoint-view');
+      view.innerHTML = \`
+        <div class="endpoint-info">
+          <h2>\${endpoint}</h2>
+          <div>
+            <span class="method-badge method-\${type === 'query' ? 'get' : 'post'}">\${method}</span>
+            <span style="color: #94a3b8;">\${type === 'query' ? 'Query (busca dados)' : 'Mutation (modifica dados)'}</span>
+          </div>
+          <div class="endpoint-path">\${url}</div>
+        </div>
+        
+        <div>
+          <h3 style="margin-bottom: 10px;">Input (JSON):</h3>
+          <textarea id="input-data" placeholder='{}'>\${getDefaultInput(router, procedure)}</textarea>
+        </div>
+        
+        <button onclick="executeRequest('\${router}', '\${procedure}', '\${type}')">▶ Executar Requisição</button>
+        
+        <div id="response" class="response" style="display: none;"></div>
+      \`;
+    }
+
+    function getDefaultInput(router, procedure) {
+      const defaults = {
+        'barragens.getById': '{"id": 1}',
+        'barragens.listByBarragem': '{"barragemId": 1}',
+        'instrumentos.getById': '{"id": 1}',
+        'checklists.getById': '{"id": 1}',
+        'questionarios.getById': '{"id": 1}',
+        'leituras.listByBarragem': '{"barragemId": 1}',
+      };
+      return defaults[\`\${router}.\${procedure}\`] || '{}';
+    }
+
+    async function executeRequest(router, procedure, type) {
+      const inputData = document.getElementById('input-data').value;
+      const responseDiv = document.getElementById('response');
+      responseDiv.style.display = 'block';
+      responseDiv.innerHTML = '<pre class="loading">⏳ Enviando requisição...</pre>';
+      
+      try {
+        const input = inputData.trim() ? JSON.parse(inputData) : {};
+        const endpoint = \`/api/trpc/\${router}.\${procedure}\`;
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(input)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          responseDiv.innerHTML = \`
+            <h3 style="margin-bottom: 10px; color: #10b981;">✓ Resposta (Status: \${response.status}):</h3>
+            <pre>\${JSON.stringify(data, null, 2)}</pre>
+          \`;
+        } else {
+          responseDiv.innerHTML = \`
+            <h3 style="margin-bottom: 10px; color: #ef4444;">✗ Erro (Status: \${response.status}):</h3>
+            <pre class="error">\${JSON.stringify(data, null, 2)}</pre>
+          \`;
+        }
+      } catch (error) {
+        responseDiv.innerHTML = \`
+          <h3 style="margin-bottom: 10px; color: #ef4444;">✗ Erro:</h3>
+          <pre class="error">\${error.message}</pre>
+        \`;
+      }
+    }
+
+    // Expor função globalmente
+    window.executeRequest = executeRequest;
+    
+    // Inicializar
+    renderSidebar();
+  </script>
+</body>
+</html>`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  });
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

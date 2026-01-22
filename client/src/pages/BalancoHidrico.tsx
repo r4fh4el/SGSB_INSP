@@ -86,6 +86,24 @@ export default function BalancoHidrico() {
     { enabled: !!selectedBarragem }
   );
   
+  // Query para buscar pluviosidade da API Open-Meteo
+  const { 
+    data: pluviosidadeApi, 
+    isLoading: loadingPluviosidade,
+    refetch: refetchPluviosidade 
+  } = trpc.meteorologia.buscarPluviosidadeMontante.useQuery(
+    { 
+      barragemId: selectedBarragem!,
+      raioKm: 1.0,
+      numPontos: 5
+    },
+    { 
+      enabled: !!selectedBarragem,
+      refetchOnWindowFocus: false,
+      retry: 2
+    }
+  );
+  
   // Selecionar primeira barragem automaticamente
   useEffect(() => {
     if (!selectedBarragem && barragens && barragens.length > 0) {
@@ -119,6 +137,43 @@ export default function BalancoHidrico() {
     
     setPluviometros(pluviometrosIniciais);
   }, [selectedBarragem, instrumentos]);
+  
+  // Atualizar pluviosidade quando dados da API chegarem
+  useEffect(() => {
+    if (pluviosidadeApi && pluviosidadeApi.success && pluviometros.length > 0) {
+      // Verificar se já existe um pluviômetro da API
+      const temPluviometroApi = pluviometros.some(p => p.instrumentoId < 0);
+      
+      if (temPluviometroApi) {
+        // Atualizar o pluviômetro da API existente
+        const novosPluviometros = pluviometros.map(p => {
+          if (p.instrumentoId < 0) {
+            return {
+              ...p,
+              precipitacao: pluviosidadeApi.precipitacaoMedia,
+              localizacao: `Média de ${pluviosidadeApi.pontosComSucesso} pontos a oeste (área a montante, raio 1km)`,
+            };
+          }
+          return p;
+        });
+        setPluviometros(novosPluviometros);
+      } else {
+        // Adicionar novo pluviômetro virtual da API
+        const novosPluviometros = [
+          {
+            instrumentoId: -1, // ID negativo indica que é da API
+            codigo: "API-OPENMETEO",
+            localizacao: `Média de ${pluviosidadeApi.pontosComSucesso} pontos a oeste (área a montante, raio 1km)`,
+            areaThiessen: pluviosidadeApi.pontosComSucesso, // Usar número de pontos como área
+            precipitacao: pluviosidadeApi.precipitacaoMedia,
+          },
+          ...pluviometros,
+        ];
+        setPluviometros(novosPluviometros);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pluviosidadeApi]);
   
   const atualizarPrecipitacao = (index: number, valor: string) => {
     const novaPrecipitacao = parseFloat(valor) || 0;
@@ -355,10 +410,44 @@ export default function BalancoHidrico() {
         {pluviometros.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Pluviômetros Cadastrados</CardTitle>
-              <CardDescription>
-                Configure a área de influência (Thiessen) para cada pluviômetro
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Pluviômetros Cadastrados</CardTitle>
+                  <CardDescription>
+                    Configure a área de influência (Thiessen) para cada pluviômetro
+                  </CardDescription>
+                </div>
+                {selectedBarragem && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchPluviosidade()}
+                    disabled={loadingPluviosidade}
+                    className="gap-2"
+                  >
+                    {loadingPluviosidade ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Buscando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4" />
+                        Buscar Pluviosidade da API
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+              {pluviosidadeApi && pluviosidadeApi.success && (
+                <div className="mt-2 p-2 bg-green-50 dark:bg-green-950 rounded-md">
+                  <p className="text-sm text-green-900 dark:text-green-100">
+                    <strong>✓ Dados da API Open-Meteo:</strong> Precipitação média de{" "}
+                    {pluviosidadeApi.pontosComSucesso} pontos a oeste da barragem (área a montante, raio 1km):{" "}
+                    <strong>{pluviosidadeApi.precipitacaoMedia.toFixed(2)} mm</strong>
+                  </p>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <Table>
@@ -374,7 +463,12 @@ export default function BalancoHidrico() {
                 <TableBody>
                   {pluviometros.map((pluv, index) => (
                     <TableRow key={pluv.instrumentoId}>
-                      <TableCell className="font-mono">{pluv.codigo}</TableCell>
+                      <TableCell className="font-mono">
+                        {pluv.codigo}
+                        {pluv.instrumentoId < 0 && (
+                          <Badge variant="outline" className="ml-2 text-xs">API</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>{pluv.localizacao}</TableCell>
                       <TableCell>
                         <Input
@@ -384,6 +478,7 @@ export default function BalancoHidrico() {
                           onChange={(e) => atualizarPrecipitacao(index, e.target.value)}
                           className="w-24"
                           placeholder="0.0"
+                          disabled={pluv.instrumentoId < 0} // Desabilitar edição para dados da API
                         />
                       </TableCell>
                       <TableCell>
@@ -393,13 +488,18 @@ export default function BalancoHidrico() {
                           value={pluv.areaThiessen}
                           onChange={(e) => atualizarAreaThiessen(index, e.target.value)}
                           className="w-24"
+                          disabled={pluv.instrumentoId < 0} // Desabilitar edição para dados da API
                         />
                       </TableCell>
                       <TableCell>
-                        <BuscarLeituraButton
-                          instrumentoId={pluv.instrumentoId}
-                          onLeituraCarregada={(valor) => atualizarPrecipitacao(index, valor.toString())}
-                        />
+                        {pluv.instrumentoId > 0 ? (
+                          <BuscarLeituraButton
+                            instrumentoId={pluv.instrumentoId}
+                            onLeituraCarregada={(valor) => atualizarPrecipitacao(index, valor.toString())}
+                          />
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">API Open-Meteo</Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
