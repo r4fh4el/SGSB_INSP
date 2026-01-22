@@ -111,10 +111,14 @@ export default function BalancoHidrico() {
     }
   }, [barragens, selectedBarragem]);
   
-  // Buscar pluviômetros
+  // Buscar pluviômetros cadastrados (opcionais - API é a fonte principal)
   useEffect(() => {
     if (!selectedBarragem || !instrumentos) {
-      setPluviometros([]);
+      // Não limpar pluviômetros se já tiver dados da API
+      // Apenas limpar se não houver barragem selecionada
+      if (!selectedBarragem) {
+        setPluviometros([]);
+      }
       return;
     }
     
@@ -126,7 +130,7 @@ export default function BalancoHidrico() {
       )
     );
     
-    // Inicializar pluviômetros com área padrão
+    // Inicializar pluviômetros cadastrados (mas não sobrescrever a API se já existir)
     const pluviometrosIniciais: PluviometroData[] = pluviometrosEncontrados.map((pluv) => ({
       instrumentoId: pluv.id,
       codigo: pluv.codigo,
@@ -135,41 +139,52 @@ export default function BalancoHidrico() {
       precipitacao: 0, // Será atualizado quando buscar leituras
     }));
     
-    setPluviometros(pluviometrosIniciais);
+    // Se já existe pluviômetro da API, adicionar os cadastrados depois
+    // Se não existe, usar apenas os cadastrados (até a API carregar)
+    const temPluviometroApi = pluviometros.some(p => p.instrumentoId < 0);
+    if (temPluviometroApi) {
+      // Manter a API no início e adicionar os cadastrados
+      const pluviometrosApi = pluviometros.filter(p => p.instrumentoId < 0);
+      setPluviometros([...pluviometrosApi, ...pluviometrosIniciais]);
+    } else {
+      // Usar apenas os cadastrados (a API será adicionada quando carregar)
+      setPluviometros(pluviometrosIniciais);
+    }
   }, [selectedBarragem, instrumentos]);
   
-  // Atualizar pluviosidade quando dados da API chegarem
+  // Atualizar pluviosidade quando dados da API chegarem - API é a fonte principal
   useEffect(() => {
-    if (pluviosidadeApi && pluviosidadeApi.success && pluviometros.length > 0) {
-      // Verificar se já existe um pluviômetro da API
-      const temPluviometroApi = pluviometros.some(p => p.instrumentoId < 0);
-      
-      if (temPluviometroApi) {
-        // Atualizar o pluviômetro da API existente
-        const novosPluviometros = pluviometros.map(p => {
-          if (p.instrumentoId < 0) {
-            return {
-              ...p,
-              precipitacao: pluviosidadeApi.precipitacaoMedia,
-              localizacao: `Média de ${pluviosidadeApi.pontosComSucesso} pontos a oeste (área a montante, raio 1km)`,
-            };
-          }
-          return p;
-        });
-        setPluviometros(novosPluviometros);
+    if (pluviosidadeApi && pluviosidadeApi.success) {
+      // A API Open-Meteo é a fonte principal de dados
+      // Criar/atualizar pluviômetro virtual da API sempre que os dados chegarem
+      const pluviometroApi = {
+        instrumentoId: -1, // ID negativo indica que é da API
+        codigo: "API-OPENMETEO",
+        localizacao: `Média de ${pluviosidadeApi.pontosComSucesso} pontos a oeste (área a montante, raio 1km)`,
+        areaThiessen: pluviosidadeApi.pontosComSucesso, // Usar número de pontos como área
+        precipitacao: pluviosidadeApi.precipitacaoMedia,
+      };
+
+      // Se já existem pluviômetros cadastrados, adicionar a API no início
+      // Se não existem, usar apenas a API
+      if (pluviometros.length > 0) {
+        const temPluviometroApi = pluviometros.some(p => p.instrumentoId < 0);
+        if (temPluviometroApi) {
+          // Atualizar o pluviômetro da API existente
+          const novosPluviometros = pluviometros.map(p => {
+            if (p.instrumentoId < 0) {
+              return pluviometroApi;
+            }
+            return p;
+          });
+          setPluviometros(novosPluviometros);
+        } else {
+          // Adicionar API no início (prioridade)
+          setPluviometros([pluviometroApi, ...pluviometros]);
+        }
       } else {
-        // Adicionar novo pluviômetro virtual da API
-        const novosPluviometros = [
-          {
-            instrumentoId: -1, // ID negativo indica que é da API
-            codigo: "API-OPENMETEO",
-            localizacao: `Média de ${pluviosidadeApi.pontosComSucesso} pontos a oeste (área a montante, raio 1km)`,
-            areaThiessen: pluviosidadeApi.pontosComSucesso, // Usar número de pontos como área
-            precipitacao: pluviosidadeApi.precipitacaoMedia,
-          },
-          ...pluviometros,
-        ];
-        setPluviometros(novosPluviometros);
+        // Usar apenas a API se não houver pluviômetros cadastrados
+        setPluviometros([pluviometroApi]);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,8 +253,21 @@ export default function BalancoHidrico() {
       return;
     }
     
+    // Verificar se há dados de pluviosidade (da API ou pluviômetros)
     if (pluviometros.length === 0) {
-      toast.error("Nenhum pluviômetro encontrado para esta barragem");
+      // Se não há pluviômetros e a API ainda não carregou, aguardar
+      if (loadingPluviosidade) {
+        toast.info("Aguardando dados de pluviosidade da API...");
+        return;
+      }
+      toast.error("Nenhum dado de pluviosidade disponível. Verifique se a barragem possui coordenadas cadastradas.");
+      return;
+    }
+    
+    // Verificar se há pelo menos um pluviômetro com precipitação válida
+    const temPrecipitacao = pluviometros.some(p => p.precipitacao > 0);
+    if (!temPrecipitacao) {
+      toast.warning("Nenhuma precipitação informada. Use o botão 'Buscar Pluviosidade da API' ou informe valores manualmente.");
       return;
     }
     
@@ -521,11 +549,26 @@ export default function BalancoHidrico() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center text-muted-foreground">
-                <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
-                <p>Nenhum pluviômetro encontrado para esta barragem.</p>
-                <p className="text-sm mt-2">
-                  Cadastre instrumentos do tipo "Pluviômetro" na aba Instrumentos.
-                </p>
+                {loadingPluviosidade ? (
+                  <>
+                    <RefreshCw className="h-12 w-12 mx-auto mb-4 text-blue-500 animate-spin" />
+                    <p>Buscando dados de pluviosidade da API Open-Meteo...</p>
+                    <p className="text-sm mt-2">
+                      Aguarde enquanto buscamos dados meteorológicos a oeste da barragem.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
+                    <p>Nenhum dado de pluviosidade disponível.</p>
+                    <p className="text-sm mt-2">
+                      Verifique se a barragem possui coordenadas (latitude/longitude) cadastradas.
+                    </p>
+                    <p className="text-sm mt-1">
+                      Ou cadastre instrumentos do tipo "Pluviômetro" na aba Instrumentos.
+                    </p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

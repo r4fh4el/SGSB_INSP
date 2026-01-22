@@ -1,0 +1,83 @@
+# ============================================================================
+# COMANDOS SSH PARA PUXAR ALTERAÇÕES NO SERVIDOR
+# ============================================================================
+
+# OPÇÃO 1: Comandos diretos (copie e cole no terminal SSH)
+# ----------------------------------------------------------------------------
+cd ~/SGSB_INSP
+git fetch origin
+git pull origin main
+pnpm install
+pm2 restart sgsb-insp
+
+# OPÇÃO 2: Comando único (execute no seu terminal local)
+# ----------------------------------------------------------------------------
+# Substitua USUARIO e SERVIDOR pelos seus dados
+ssh USUARIO@SERVIDOR "cd ~/SGSB_INSP && git fetch origin && git pull origin main && pnpm install && pm2 restart sgsb-insp"
+
+# OPÇÃO 3: Com backup do .env (recomendado)
+# ----------------------------------------------------------------------------
+ssh USUARIO@SERVIDOR "cd ~/SGSB_INSP && cp .env .env.backup.\$(date +%Y%m%d_%H%M%S) && git fetch origin && git pull origin main && pnpm install && pm2 restart sgsb-insp"
+
+# OPÇÃO 4: Usando o script completo
+# ----------------------------------------------------------------------------
+# No seu terminal local:
+ssh USUARIO@SERVIDOR 'bash -s' < comandos-ssh-pull-atualizado.sh
+
+# ============================================================================
+# COMANDOS INDIVIDUAIS (se precisar executar passo a passo)
+# ============================================================================
+
+# 1. Conectar ao servidor
+ssh USUARIO@SERVIDOR
+
+# 2. Navegar para o diretório
+cd ~/SGSB_INSP
+
+# 3. Verificar status
+git status
+
+# 4. Fazer backup do .env (importante!)
+cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+
+# 5. Buscar alterações
+git fetch origin
+
+# 6. Ver o que será atualizado
+git log HEAD..origin/main --oneline
+
+# 7. Fazer pull
+git pull origin main
+
+# 8. Instalar dependências
+pnpm install
+
+# 9. Reiniciar aplicação
+pm2 restart sgsb-insp
+
+# 10. Verificar status
+pm2 status
+pm2 logs sgsb-insp --lines 50
+
+# ============================================================================
+# VERIFICAÇÕES PÓS-DEPLOY
+# ============================================================================
+
+# Verificar se a aplicação está rodando
+curl http://localhost/api/health
+
+# Ver logs em tempo real
+pm2 logs sgsb-insp
+
+# Verificar se as novas rotas estão funcionando
+curl http://localhost/api/panel
+
+# ============================================================================
+# NOTAS IMPORTANTES
+# ============================================================================
+
+# - Sempre faça backup do .env antes de fazer pull
+# - Se houver conflitos, resolva manualmente antes de continuar
+# - Verifique se o PM2 está rodando: pm2 list
+# - Se a aplicação não reiniciar, tente: pm2 delete sgsb-insp && pm2 start npm --name sgsb-insp -- start
+
