@@ -81,12 +81,8 @@ export default function BalancoHidrico() {
   
   // Queries
   const { data: barragens } = trpc.barragens.list.useQuery();
-  const { data: instrumentos } = trpc.instrumentos.list.useQuery(
-    { barragemId: selectedBarragem ?? undefined },
-    { enabled: !!selectedBarragem }
-  );
   
-  // Query para buscar pluviosidade da API Open-Meteo
+  // Query para buscar pluviosidade da API Open-Meteo (ÚNICA FONTE)
   const { 
     data: pluviosidadeApi, 
     isLoading: loadingPluviosidade,
@@ -111,53 +107,19 @@ export default function BalancoHidrico() {
     }
   }, [barragens, selectedBarragem]);
   
-  // Buscar pluviômetros cadastrados (opcionais - API é a fonte principal)
+  // Limpar pluviômetros quando mudar de barragem (API será recarregada)
   useEffect(() => {
-    if (!selectedBarragem || !instrumentos) {
-      // Não limpar pluviômetros se já tiver dados da API
-      // Apenas limpar se não houver barragem selecionada
-      if (!selectedBarragem) {
-        setPluviometros([]);
-      }
-      return;
+    if (!selectedBarragem) {
+      setPluviometros([]);
     }
-    
-    const pluviometrosEncontrados = instrumentos.filter(
-      (inst) => inst.tipo && (
-        inst.tipo.toLowerCase().includes("pluviômetro") ||
-        inst.tipo.toLowerCase().includes("pluviometro") ||
-        inst.tipo.toLowerCase().includes("pluvi")
-      )
-    );
-    
-    // Inicializar pluviômetros cadastrados (mas não sobrescrever a API se já existir)
-    const pluviometrosIniciais: PluviometroData[] = pluviometrosEncontrados.map((pluv) => ({
-      instrumentoId: pluv.id,
-      codigo: pluv.codigo,
-      localizacao: pluv.localizacao || "Não informado",
-      areaThiessen: 1, // km² - padrão, pode ser editado
-      precipitacao: 0, // Será atualizado quando buscar leituras
-    }));
-    
-    // Se já existe pluviômetro da API, adicionar os cadastrados depois
-    // Se não existe, usar apenas os cadastrados (até a API carregar)
-    const temPluviometroApi = pluviometros.some(p => p.instrumentoId < 0);
-    if (temPluviometroApi) {
-      // Manter a API no início e adicionar os cadastrados
-      const pluviometrosApi = pluviometros.filter(p => p.instrumentoId < 0);
-      setPluviometros([...pluviometrosApi, ...pluviometrosIniciais]);
-    } else {
-      // Usar apenas os cadastrados (a API será adicionada quando carregar)
-      setPluviometros(pluviometrosIniciais);
-    }
-  }, [selectedBarragem, instrumentos]);
+  }, [selectedBarragem]);
   
-  // Atualizar pluviosidade quando dados da API chegarem - API é a fonte principal
+  // Atualizar pluviosidade quando dados da API chegarem - API é a ÚNICA fonte
   useEffect(() => {
     if (pluviosidadeApi && pluviosidadeApi.success) {
-      // A API Open-Meteo é a fonte principal de dados
-      // Criar/atualizar pluviômetro virtual da API sempre que os dados chegarem
-      const pluviometroApi = {
+      // A API Open-Meteo é a ÚNICA fonte de dados
+      // Criar pluviômetro virtual da API
+      const pluviometroApi: PluviometroData = {
         instrumentoId: -1, // ID negativo indica que é da API
         codigo: "API-OPENMETEO",
         localizacao: `Média de ${pluviosidadeApi.pontosComSucesso} pontos a oeste (área a montante, raio 1km)`,
@@ -165,29 +127,12 @@ export default function BalancoHidrico() {
         precipitacao: pluviosidadeApi.precipitacaoMedia,
       };
 
-      // Se já existem pluviômetros cadastrados, adicionar a API no início
-      // Se não existem, usar apenas a API
-      if (pluviometros.length > 0) {
-        const temPluviometroApi = pluviometros.some(p => p.instrumentoId < 0);
-        if (temPluviometroApi) {
-          // Atualizar o pluviômetro da API existente
-          const novosPluviometros = pluviometros.map(p => {
-            if (p.instrumentoId < 0) {
-              return pluviometroApi;
-            }
-            return p;
-          });
-          setPluviometros(novosPluviometros);
-        } else {
-          // Adicionar API no início (prioridade)
-          setPluviometros([pluviometroApi, ...pluviometros]);
-        }
-      } else {
-        // Usar apenas a API se não houver pluviômetros cadastrados
-        setPluviometros([pluviometroApi]);
-      }
+      // Usar APENAS a API - não buscar pluviômetros cadastrados
+      setPluviometros([pluviometroApi]);
+    } else if (pluviosidadeApi && !pluviosidadeApi.success) {
+      // Se a API falhou, limpar pluviômetros
+      setPluviometros([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pluviosidadeApi]);
   
   const atualizarPrecipitacao = (index: number, valor: string) => {
@@ -197,40 +142,8 @@ export default function BalancoHidrico() {
     setPluviometros(novosPluviometros);
   };
   
-  // Componente para buscar leitura de um pluviômetro específico
-  const BuscarLeituraButton = ({ instrumentoId, onLeituraCarregada }: { instrumentoId: number; onLeituraCarregada: (valor: number) => void }) => {
-    const { data: leituras, isLoading, refetch } = trpc.instrumentos.leituras.useQuery(
-      { instrumentoId, limit: 1 },
-      { enabled: false } // Não buscar automaticamente
-    );
-    
-    const handleBuscar = async () => {
-      const result = await refetch();
-      if (result.data && result.data.length > 0) {
-        const valor = parseFloat(result.data[0].valor) || 0;
-        onLeituraCarregada(valor);
-        toast.success(`Última leitura carregada: ${valor.toFixed(2)} mm`);
-      } else {
-        toast.warning("Nenhuma leitura encontrada para este pluviômetro");
-      }
-    };
-    
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleBuscar}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-        ) : (
-          <RefreshCw className="h-3 w-3 mr-1" />
-        )}
-        Buscar
-      </Button>
-    );
-  };
+  // Componente removido - não busca mais leituras de pluviômetros cadastrados
+  // A API Open-Meteo é a única fonte de dados
   
   // Carregar dados da barragem selecionada
   useEffect(() => {
@@ -440,9 +353,9 @@ export default function BalancoHidrico() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Pluviômetros Cadastrados</CardTitle>
+                  <CardTitle>Dados de Pluviosidade - API Open-Meteo</CardTitle>
                   <CardDescription>
-                    Configure a área de influência (Thiessen) para cada pluviômetro
+                    Dados obtidos automaticamente da API Open-Meteo (média de pontos a oeste da barragem)
                   </CardDescription>
                 </div>
                 {selectedBarragem && (
@@ -520,14 +433,7 @@ export default function BalancoHidrico() {
                         />
                       </TableCell>
                       <TableCell>
-                        {pluv.instrumentoId > 0 ? (
-                          <BuscarLeituraButton
-                            instrumentoId={pluv.instrumentoId}
-                            onLeituraCarregada={(valor) => atualizarPrecipitacao(index, valor.toString())}
-                          />
-                        ) : (
-                          <Badge variant="secondary" className="text-xs">API Open-Meteo</Badge>
-                        )}
+                        <Badge variant="secondary" className="text-xs">API Open-Meteo</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -565,7 +471,7 @@ export default function BalancoHidrico() {
                       Verifique se a barragem possui coordenadas (latitude/longitude) cadastradas.
                     </p>
                     <p className="text-sm mt-1">
-                      Ou cadastre instrumentos do tipo "Pluviômetro" na aba Instrumentos.
+                      A pluviosidade é obtida automaticamente da API Open-Meteo usando as coordenadas da barragem.
                     </p>
                   </>
                 )}
