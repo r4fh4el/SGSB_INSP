@@ -86,6 +86,7 @@ export default function BalancoHidrico() {
   const { 
     data: pluviosidadeApi, 
     isLoading: loadingPluviosidade,
+    isFetching: isFetchingPluviosidade,
     refetch: refetchPluviosidade 
   } = trpc.meteorologia.buscarPluviosidadeMontante.useQuery(
     { 
@@ -96,7 +97,9 @@ export default function BalancoHidrico() {
     { 
       enabled: !!selectedBarragem,
       refetchOnWindowFocus: false,
-      retry: 2
+      retry: 2,
+      staleTime: 0, // Sempre considerar os dados como "stale" para permitir refetch
+      cacheTime: 0, // Não cachear para permitir refetch imediato
     }
   );
   
@@ -362,11 +365,18 @@ export default function BalancoHidrico() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => refetchPluviosidade()}
-                    disabled={loadingPluviosidade}
+                    onClick={async () => {
+                      try {
+                        await refetchPluviosidade();
+                        toast.success("Dados de pluviosidade atualizados!");
+                      } catch (error) {
+                        toast.error("Erro ao buscar dados da API");
+                      }
+                    }}
+                    disabled={loadingPluviosidade || isFetchingPluviosidade}
                     className="gap-2"
                   >
-                    {loadingPluviosidade ? (
+                    {(loadingPluviosidade || isFetchingPluviosidade) ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
                         Buscando...
